@@ -1,0 +1,8 @@
+[package]
+authors = ["Ivan Dubrov <dubrov.ivan@gmail.com>"]
+description = "Hitachi HD44780 support for STM32"
+name = "stm32-hd44780"
+version = "0.1.0"
+
+[dependencies]
+cortex-m = "0.2.6"
