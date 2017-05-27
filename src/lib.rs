@@ -1,4 +1,7 @@
 #![no_std]
+#![feature(const_fn)]
+
+use core::marker::PhantomData;
 
 pub enum FunctionMode {
     /// Send data 4 bits at the time
@@ -7,52 +10,52 @@ pub enum FunctionMode {
     Bit8 = 0x10
 }
 
-enum FunctionDots {
+pub enum FunctionDots {
     Dots5x8 = 0x00,
     Dots5x10 = 0x04
 }
 
-enum FunctionLine {
+pub enum FunctionLine {
     Line1 = 0x00,
     Line2 = 0x08
 }
 
-enum DisplayBlink {
+pub enum DisplayBlink {
     BlinkOff = 0x00,
     BlinkOn = 0x01
 }
 
-enum DisplayCursor {
+pub enum DisplayCursor {
     CursorOff = 0x00,
     CursorOn = 0x02
 }
 
-enum DisplayMode {
+pub enum DisplayMode {
     DisplayOff = 0x00,
     DisplayOn = 0x04
 }
 
-enum Direction {
+pub enum Direction {
     Left = 0x00,
     Right = 0x04
 }
 
-enum Scroll {
+pub enum Scroll {
     CursorMove = 0x00,
     DisplayMove = 0x08
 }
 
-enum EntryModeDirection {
+pub enum EntryModeDirection {
     EntryLeft = 0x00,
     EntryRight = 0x02
 }
 
-enum EntryModeShift {
+pub enum EntryModeShift {
     NoShift = 0x00,
     Shift = 0x01
 }
 
-enum Command {
+pub enum Command {
     ClearDisplay = 0x01,
     ReturnHome = 0x02,
     EntryModeSet = 0x04,
@@ -63,7 +66,29 @@ enum Command {
     SetDDRamAddr = 0x80
 }
 
-trait Hardware {
+pub struct Lcd<HW: Hardware> {
+    hw: PhantomData<*const HW>,
+}
+
+
+impl<HW: Hardware> Lcd<HW> {
+    pub const fn new() -> Lcd<HW> {
+        Lcd {
+            hw: PhantomData
+        }
+    }
+
+    pub fn borrow(&self, hw: HW) -> HD44780<HW> {
+        HD44780 {
+            hw: hw
+        }
+    }
+}
+
+unsafe impl<HW: Hardware> Sync for Lcd<HW> {}
+
+
+pub trait Hardware {
     fn rs(&self, bit: bool);
     fn enable(&self, bit: bool);
     fn data(&self, data: u8);
@@ -81,18 +106,12 @@ trait Hardware {
     }
 }
 
-struct HD44780<HW: Hardware> {
+pub struct HD44780<HW: Hardware> {
     hw: HW
 }
 
 impl<HW: Hardware> HD44780<HW> {
-    pub fn new(hw: HW) -> HD44780<HW> {
-        HD44780 {
-            hw
-        }
-    }
-
-    pub fn initialize(&mut self) {
+    pub fn init(&self) {
         let mode = self.hw.mode();
         self.hw.rs(false);
         self.hw.wait_address();
@@ -146,37 +165,37 @@ impl<HW: Hardware> HD44780<HW> {
     }
 
 
-    pub fn clear(&mut self) -> &mut Self {
+    pub fn clear(&self) -> &Self {
         self.command(Command::ClearDisplay as u8);
         // This command could take as long as 1.52ms to execute
         self.wait_ready2(2000);
         self
     }
 
-    pub fn home(&mut self) -> &mut Self {
+    pub fn home(&self) -> &Self {
         self.command(Command::ReturnHome as u8);
         // This command could take as long as 1.52ms to execute
         self.wait_ready2(2000);
         self
     }
 
-    pub fn display(&mut self, display: DisplayMode, cursor: DisplayCursor, blink: DisplayBlink) -> &mut Self {
+    pub fn display(&self, display: DisplayMode, cursor: DisplayCursor, blink: DisplayBlink) -> &Self {
         self.command((Command::DisplayControl as u8) | (display as u8) | (cursor as u8) | (blink as u8))
     }
 
-    pub fn entry_mode(&mut self, dir: EntryModeDirection, scroll: EntryModeShift) -> &mut Self {
+    pub fn entry_mode(&self, dir: EntryModeDirection, scroll: EntryModeShift) -> &Self {
         self.command((Command::EntryModeSet as u8) | (dir as u8) | (scroll as u8))
     }
 
-    pub fn scroll(&mut self, dir: Direction) -> &mut Self {
+    pub fn scroll(&self, dir: Direction) -> &Self {
         self.command((Command::CursorShift as u8) | (Scroll::DisplayMove as u8) | (dir as u8))
     }
 
-    pub fn cursor(&mut self, dir: Direction) -> &mut Self {
+    pub fn cursor(&self, dir: Direction) -> &Self {
         self.command((Command::CursorShift as u8) | (Scroll::CursorMove as u8) | (dir as u8))
     }
 
-    pub fn position(&mut self, col: u8, row: u8) {
+    pub fn position(&self, col: u8, row: u8) {
         let offset = match row {
             1 => 0x40,
             2 => 0x14,
@@ -186,7 +205,11 @@ impl<HW: Hardware> HD44780<HW> {
         self.command((Command::SetDDRamAddr as u8) | (col + offset));
     }
 
-    pub fn write(&mut self, data: u8) -> &mut Self {
+    pub fn print(&self, data: char) -> &Self {
+        self.write(data as u8)
+    }
+
+    fn write(&self, data: u8) -> &Self {
         self.hw.rs(true);
         self.hw.wait_address(); // tAS
         self.send(data);
@@ -196,7 +219,7 @@ impl<HW: Hardware> HD44780<HW> {
         self
     }
 
-    pub fn upload_character(&mut self, location: u8, map: [u8; 8]) -> &mut Self {
+    pub fn upload_character(&self, location: u8, map: [u8; 8]) -> &Self {
         // Only 8 locations are available
         self.command((Command::SetCGRamAddr as u8) | ((location & 0x7) << 3));
         for i in 0..8 {
@@ -205,7 +228,7 @@ impl<HW: Hardware> HD44780<HW> {
         self
     }
 
-    fn command(&mut self, cmd: u8) -> &mut Self {
+    fn command(&self, cmd: u8) -> &Self {
         self.hw.rs(false);
         self.hw.wait_address(); // tAS
         self.send(cmd);
@@ -214,21 +237,21 @@ impl<HW: Hardware> HD44780<HW> {
     }
 
     // Typical command wait time is 37us
-    fn wait_ready(&mut self) {
+    fn wait_ready(&self) {
         self.hw.delay_us(50);
     }
 
-    fn wait_ready2(&mut self, delay: u32) {
+    fn wait_ready2(&self, delay: u32) {
         self.hw.delay_us(delay);
     }
 
-    fn pulse_enable(&mut self) {
+    fn pulse_enable(&self) {
         self.hw.enable(true);
         self.hw.delay_us(1); // minimum delay is 450 ns
         self.hw.enable(false);
     }
 
-    fn send(&mut self, data: u8) {
+    fn send(&self, data: u8) {
         match self.hw.mode() {
             FunctionMode::Bit8 => {
                 self.send_data(data);
@@ -240,7 +263,7 @@ impl<HW: Hardware> HD44780<HW> {
         }
     }
 
-    fn send_data(&mut self, data: u8) {
+    fn send_data(&self, data: u8) {
         self.hw.data(data);
         self.pulse_enable();
     }
