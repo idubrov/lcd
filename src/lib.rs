@@ -66,28 +66,6 @@ pub enum Command {
     SetDDRamAddr = 0x80
 }
 
-pub struct Lcd<HW: Hardware> {
-    hw: PhantomData<*const HW>,
-}
-
-
-impl<HW: Hardware> Lcd<HW> {
-    pub const fn new() -> Lcd<HW> {
-        Lcd {
-            hw: PhantomData
-        }
-    }
-
-    pub fn borrow(&self, hw: HW) -> HD44780<HW> {
-        HD44780 {
-            hw: hw
-        }
-    }
-}
-
-unsafe impl<HW: Hardware> Sync for Lcd<HW> {}
-
-
 pub trait Hardware {
     fn rs(&self, bit: bool);
     fn enable(&self, bit: bool);
@@ -111,6 +89,12 @@ pub struct HD44780<HW: Hardware> {
 }
 
 impl<HW: Hardware> HD44780<HW> {
+    pub fn new(hw: HW) -> HD44780<HW> {
+        HD44780 {
+            hw: hw
+        }
+    }
+
     pub fn init(&self) {
         let mode = self.hw.mode();
         self.hw.rs(false);
@@ -205,11 +189,14 @@ impl<HW: Hardware> HD44780<HW> {
         self.command((Command::SetDDRamAddr as u8) | (col + offset));
     }
 
-    pub fn print(&self, data: char) -> &Self {
-        self.write(data as u8)
+    pub fn print(&self, str: &str) -> &Self {
+        for c in str.as_bytes() {
+            self.write(*c);
+        }
+        self
     }
 
-    fn write(&self, data: u8) -> &Self {
+    pub fn write(&self, data: u8) -> &Self {
         self.hw.rs(true);
         self.hw.wait_address(); // tAS
         self.send(data);
