@@ -1,8 +1,6 @@
 #![no_std]
 #![feature(const_fn)]
 
-use core::marker::PhantomData;
-
 pub enum FunctionMode {
     /// Send data 4 bits at the time
     Bit4 = 0x00,
@@ -86,6 +84,13 @@ pub trait Hardware {
 
 pub struct HD44780<HW: Hardware> {
     hw: HW
+}
+
+impl<HW: Hardware> core::fmt::Write for HD44780<HW> {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        self.print(s);
+        Result::Ok(())
+    }
 }
 
 impl<HW: Hardware> HD44780<HW> {
