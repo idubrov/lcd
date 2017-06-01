@@ -1,6 +1,9 @@
 #![no_std]
 #![feature(const_fn)]
 
+#[cfg(feature = "fast-format")]
+extern crate fast_fmt;
+
 pub enum FunctionMode {
     /// Send data 4 bits at the time
     Bit4 = 0x00,
@@ -89,9 +92,23 @@ pub struct HD44780<HW: Hardware> {
 impl<HW: Hardware> core::fmt::Write for HD44780<HW> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         self.print(s);
-        Result::Ok(())
+        Ok(())
     }
 }
+
+#[cfg(feature = "fast-format")]
+impl<HW: Hardware> fast_fmt::Write for HD44780<HW> {
+    type Error = ();
+
+    fn write_char(&mut self, val: char) -> Result<(), Self::Error> {
+        self.write(val as u8);
+        Ok(())
+    }
+
+    fn size_hint(&mut self, _bytes: usize) {
+    }
+}
+
 
 impl<HW: Hardware> HD44780<HW> {
     pub fn new(hw: HW) -> HD44780<HW> {
@@ -100,7 +117,7 @@ impl<HW: Hardware> HD44780<HW> {
         }
     }
 
-    pub fn init(&self) {
+    pub fn init(&mut self) {
         let mode = self.hw.mode();
         self.hw.rs(false);
         self.hw.wait_address();
@@ -154,37 +171,37 @@ impl<HW: Hardware> HD44780<HW> {
     }
 
 
-    pub fn clear(&self) -> &Self {
+    pub fn clear(&mut self) -> &Self {
         self.command(Command::ClearDisplay as u8);
         // This command could take as long as 1.52ms to execute
-        self.wait_ready2(2000);
+        self.wait_ready_long(2000);
         self
     }
 
-    pub fn home(&self) -> &Self {
+    pub fn home(&mut self) -> &Self {
         self.command(Command::ReturnHome as u8);
         // This command could take as long as 1.52ms to execute
-        self.wait_ready2(2000);
+        self.wait_ready_long(2000);
         self
     }
 
-    pub fn display(&self, display: DisplayMode, cursor: DisplayCursor, blink: DisplayBlink) -> &Self {
+    pub fn display(&mut self, display: DisplayMode, cursor: DisplayCursor, blink: DisplayBlink) -> &Self {
         self.command((Command::DisplayControl as u8) | (display as u8) | (cursor as u8) | (blink as u8))
     }
 
-    pub fn entry_mode(&self, dir: EntryModeDirection, scroll: EntryModeShift) -> &Self {
+    pub fn entry_mode(&mut self, dir: EntryModeDirection, scroll: EntryModeShift) -> &Self {
         self.command((Command::EntryModeSet as u8) | (dir as u8) | (scroll as u8))
     }
 
-    pub fn scroll(&self, dir: Direction) -> &Self {
+    pub fn scroll(&mut self, dir: Direction) -> &Self {
         self.command((Command::CursorShift as u8) | (Scroll::DisplayMove as u8) | (dir as u8))
     }
 
-    pub fn cursor(&self, dir: Direction) -> &Self {
+    pub fn cursor(&mut self, dir: Direction) -> &Self {
         self.command((Command::CursorShift as u8) | (Scroll::CursorMove as u8) | (dir as u8))
     }
 
-    pub fn position(&self, col: u8, row: u8) {
+    pub fn position(&mut self, col: u8, row: u8) {
         let offset = match row {
             1 => 0x40,
             2 => 0x14,
@@ -194,14 +211,14 @@ impl<HW: Hardware> HD44780<HW> {
         self.command((Command::SetDDRamAddr as u8) | (col + offset));
     }
 
-    pub fn print(&self, str: &str) -> &Self {
+    pub fn print(&mut self, str: &str) -> &Self {
         for c in str.as_bytes() {
             self.write(*c);
         }
         self
     }
 
-    pub fn write(&self, data: u8) -> &Self {
+    pub fn write(&mut self, data: u8) -> &Self {
         self.hw.rs(true);
         self.hw.wait_address(); // tAS
         self.send(data);
@@ -211,7 +228,7 @@ impl<HW: Hardware> HD44780<HW> {
         self
     }
 
-    pub fn upload_character(&self, location: u8, map: [u8; 8]) -> &Self {
+    pub fn upload_character(&mut self, location: u8, map: [u8; 8]) -> &Self {
         // Only 8 locations are available
         self.command((Command::SetCGRamAddr as u8) | ((location & 0x7) << 3));
         for i in 0..8 {
@@ -220,7 +237,7 @@ impl<HW: Hardware> HD44780<HW> {
         self
     }
 
-    fn command(&self, cmd: u8) -> &Self {
+    fn command(&mut self, cmd: u8) -> &Self {
         self.hw.rs(false);
         self.hw.wait_address(); // tAS
         self.send(cmd);
@@ -233,7 +250,7 @@ impl<HW: Hardware> HD44780<HW> {
         self.hw.delay_us(50);
     }
 
-    fn wait_ready2(&self, delay: u32) {
+    fn wait_ready_long(&self, delay: u32) {
         self.hw.delay_us(delay);
     }
 

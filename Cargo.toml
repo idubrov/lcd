@@ -4,5 +4,15 @@ description = "Hitachi HD44780 support for STM32"
 name = "hd44780"
 version = "0.1.0"
 
+[dependencies.fast_fmt]
+optional = true
+default-features = false
+features = []
+version = "0.1.1"
+
+[features]
+default = []
+fast-format = ["fast_fmt"]
+
 [dependencies]
 cortex-m = "0.2.6"
