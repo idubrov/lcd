@@ -2,7 +2,7 @@
 authors = ["Ivan Dubrov <dubrov.ivan@gmail.com>"]
 description = "Hitachi HD44780 support for STM32"
 name = "hd44780"
-version = "0.1.0"
+version = "0.1.1-pre"
 
 [dependencies.fast_fmt]
 optional = true
