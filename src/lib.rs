@@ -1,5 +1,6 @@
 #![no_std]
 #![feature(const_fn)]
+#![deny(warnings)]
 
 #[cfg(feature = "fast-format")]
 extern crate fast_fmt;
@@ -231,8 +232,8 @@ impl<HW: Hardware> HD44780<HW> {
     pub fn upload_character(&mut self, location: u8, map: [u8; 8]) -> &Self {
         // Only 8 locations are available
         self.command((Command::SetCGRamAddr as u8) | ((location & 0x7) << 3));
-        for i in 0..8 {
-            self.write(map[i]);
+        for item in map.iter().take(8) {
+            self.write(*item);
         }
         self
     }
