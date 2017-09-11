@@ -5,6 +5,7 @@
 #[cfg(feature = "fast-format")]
 extern crate fast_fmt;
 
+#[derive(Copy, Clone)]
 pub enum FunctionMode {
     /// Send data 4 bits at the time
     Bit4 = 0x00,
@@ -12,51 +13,61 @@ pub enum FunctionMode {
     Bit8 = 0x10
 }
 
+#[derive(Copy, Clone)]
 pub enum FunctionDots {
     Dots5x8 = 0x00,
     Dots5x10 = 0x04
 }
 
+#[derive(Copy, Clone)]
 pub enum FunctionLine {
     Line1 = 0x00,
     Line2 = 0x08
 }
 
+#[derive(Copy, Clone)]
 pub enum DisplayBlink {
     BlinkOff = 0x00,
     BlinkOn = 0x01
 }
 
+#[derive(Copy, Clone)]
 pub enum DisplayCursor {
     CursorOff = 0x00,
     CursorOn = 0x02
 }
 
+#[derive(Copy, Clone)]
 pub enum DisplayMode {
     DisplayOff = 0x00,
     DisplayOn = 0x04
 }
 
+#[derive(Copy, Clone)]
 pub enum Direction {
     Left = 0x00,
     Right = 0x04
 }
 
+#[derive(Copy, Clone)]
 pub enum Scroll {
     CursorMove = 0x00,
     DisplayMove = 0x08
 }
 
+#[derive(Copy, Clone)]
 pub enum EntryModeDirection {
     EntryLeft = 0x00,
     EntryRight = 0x02
 }
 
+#[derive(Copy, Clone)]
 pub enum EntryModeShift {
     NoShift = 0x00,
     Shift = 0x01
 }
 
+#[derive(Copy, Clone)]
 pub enum Command {
     ClearDisplay = 0x01,
     ReturnHome = 0x02,
@@ -68,16 +79,18 @@ pub enum Command {
     SetDDRamAddr = 0x80
 }
 
+pub trait Delay {
+    /// Delay for given amount of time (in microseconds).
+    fn delay_us(&self, delay: u32);
+}
+
 pub trait Hardware {
     fn rs(&self, bit: bool);
     fn enable(&self, bit: bool);
     fn data(&self, data: u8);
 
-    /// Delay for given amount of time (in usec).
-    fn delay_us(&self, delay: u32);
-
     /// Address set up time is 40ns minimum (tAS)
-    /// This function should be overriden in case processor is too fast for 40ns to pass.
+    /// This function should be overridden in case processor is too fast for 40ns to pass.
     fn wait_address(&self) {}
 
     /// Override to pick 8-bit mode (4-bit mode by default)
@@ -90,7 +103,7 @@ pub struct HD44780<HW: Hardware> {
     hw: HW
 }
 
-impl<HW: Hardware> core::fmt::Write for HD44780<HW> {
+impl<HW: Hardware + Delay> core::fmt::Write for HD44780<HW> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         self.print(s);
         Ok(())
@@ -98,7 +111,7 @@ impl<HW: Hardware> core::fmt::Write for HD44780<HW> {
 }
 
 #[cfg(feature = "fast-format")]
-impl<HW: Hardware> fast_fmt::Write for HD44780<HW> {
+impl<HW: Hardware + Delay> fast_fmt::Write for HD44780<HW> {
     type Error = ();
 
     fn write_char(&mut self, val: char) -> Result<(), Self::Error> {
@@ -106,12 +119,11 @@ impl<HW: Hardware> fast_fmt::Write for HD44780<HW> {
         Ok(())
     }
 
-    fn size_hint(&mut self, _bytes: usize) {
-    }
+    fn size_hint(&mut self, _bytes: usize) {}
 }
 
 
-impl<HW: Hardware> HD44780<HW> {
+impl<HW: Hardware + Delay> HD44780<HW> {
     pub fn new(hw: HW) -> HD44780<HW> {
         HD44780 {
             hw: hw
@@ -140,7 +152,7 @@ impl<HW: Hardware> HD44780<HW> {
 
                 self.pulse_enable(); // Repeat for the third time
                 self.wait_ready();
-            },
+            }
             FunctionMode::Bit4 => {
                 // Run initialization procedure for the display (4-bit mode).
                 self.send_data(((Command::FunctionSet as u8) | (FunctionMode::Bit8 as u8)) >> 4);
@@ -279,3 +291,135 @@ impl<HW: Hardware> HD44780<HW> {
     }
 }
 
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::string::String;
+    use std::vec::Vec;
+    use std::cell::RefCell;
+
+    struct StringHw {
+        commands: RefCell<Vec<String>>,
+        mode: FunctionMode,
+    }
+
+    impl StringHw {
+        pub fn new(mode: FunctionMode) -> StringHw {
+            StringHw {
+                commands: RefCell::new(Vec::new()),
+                mode
+            }
+        }
+
+        pub fn commands(&self) -> Vec<String> {
+            self.commands.borrow().clone()
+        }
+    }
+
+    impl Hardware for StringHw {
+        fn rs(&self, bit: bool) {
+            self.commands.borrow_mut().push(format!("R/S {}", bit));
+        }
+
+        fn enable(&self, bit: bool) {
+            self.commands.borrow_mut().push(format!("EN {}", bit));
+        }
+
+        fn data(&self, data: u8) {
+            let str = match self.mode {
+                FunctionMode::Bit4 => format!("DATA 0b{:04b}", data),
+                FunctionMode::Bit8 => format!("DATA 0b{:08b}", data),
+            };
+            self.commands.borrow_mut().push(str);
+        }
+
+        fn mode(&self) -> FunctionMode {
+            let mode = self.mode;
+            mode
+        }
+    }
+
+    impl Delay for StringHw {
+        fn delay_us(&self, delay: u32) {
+            self.commands.borrow_mut().push(format!("DELAY {}", delay));
+        }
+    }
+
+    #[test]
+    fn init_4bit() {
+        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit4));
+        lcd.init();
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            // Send init command three times
+            "R/S false",
+            "DATA 0b0011",
+            "EN true", "DELAY 1", "EN false", "DELAY 4500",
+            "EN true", "DELAY 1", "EN false", "DELAY 150",
+            "EN true", "DELAY 1", "EN false", "DELAY 50",
+            // Switch to 4-bit mode
+            "DATA 0b0010", "EN true", "DELAY 1", "EN false", "DELAY 50",
+            // Set lines, font size
+            "R/S false",
+            "DATA 0b0010", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1000", "EN true", "DELAY 1", "EN false",
+            "DELAY 50",
+            // Display
+            "R/S false",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1000", "EN true", "DELAY 1", "EN false",
+            "DELAY 50",
+            // Clear
+            "R/S false",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0001", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 2000",
+            // Entry mode
+            "R/S false",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0110", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+    }
+
+    #[test]
+    fn init_8bit() {
+        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit8));
+        lcd.init();
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            // Send init command three times
+            "R/S false",
+            "DATA 0b00111100",
+            "EN true", "DELAY 1", "EN false", "DELAY 4500",
+            "EN true", "DELAY 1", "EN false", "DELAY 150",
+            "EN true", "DELAY 1", "EN false", "DELAY 50",
+            // Set lines, font size
+            "R/S false",
+            "DATA 0b00111000", "EN true", "DELAY 1", "EN false",
+            "DELAY 50",
+            // Display
+            "R/S false",
+            "DATA 0b00001000", "EN true", "DELAY 1", "EN false",
+            "DELAY 50",
+            // Clear
+            "R/S false",
+            "DATA 0b00000001", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 2000",
+            // Entry mode
+            "R/S false",
+            "DATA 0b00000110", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+    }
+}

@@ -1,6 +1,10 @@
-# LCD
+[![crates.io](https://img.shields.io/crates/v/lcd.svg)](https://crates.io/crates/lcd)
+[![crates.io](https://img.shields.io/crates/d/lcd.svg)](https://crates.io/crates/lcd)
+[![CircleCI](https://img.shields.io/circleci/project/github/idubrov/lcd.svg)]()
 
-Library to support Hitach LCD controller ([HD44780][1])
+# `lcd`
+
+Library that implements low-level protocol to the [Hitachi HD44780][1]-compatible LCD device.
 
 [1]: https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller
 
