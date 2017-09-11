@@ -1,6 +1,8 @@
-# HD44780
+# LCD
 
-Library to support HD44780 protocol (LCD screen).
+Library to support Hitach LCD controller ([HD44780][1])
+
+[1]: https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller
 
 ## License
 
