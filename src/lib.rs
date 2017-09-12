@@ -74,7 +74,6 @@
 //! write!(&mut lcd, "Hello, my number today is {: >4}", 42).unwrap();
 //! ```
 //!
-//! ## Links
 //! [1]: https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller
 
 
