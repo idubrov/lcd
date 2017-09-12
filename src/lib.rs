@@ -63,7 +63,7 @@
 //! let mut lcd = HD44780::new(hw);
 //!
 //! // initialization
-//! lcd.init();
+//! lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
 //! lcd.display(
 //!     DisplayMode::DisplayOn,
 //!     DisplayCursor::CursorOff,
@@ -207,7 +207,18 @@ impl<HW: Hardware + Delay> HD44780<HW> {
 
     /// Initialize LCD display. Sets an equivalent of the following setup:
     ///
-    /// ```rust
+    /// ```rust,no_run
+    /// # use lcd::*;
+    /// # struct HW {}
+    /// # impl Hardware for HW {
+    /// #   fn rs(&self, bit: bool) { }
+    /// #   fn enable(&self, bit: bool) { }
+    /// #   fn data(&self, data: u8) { }
+    /// # }
+    /// # impl Delay for HW {
+    /// #   fn delay_us(&self, delay_usec: u32) { }
+    /// # }
+    /// # let mut lcd = HD44780::new(HW {});
     /// lcd.display(DisplayMode::DisplayOff, DisplayCursor::CursorOff, DisplayBlink::BlinkOff);
     /// lcd.clear();
     /// lcd.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::NoShift);
