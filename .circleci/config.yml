@@ -4,7 +4,6 @@ jobs:
     docker:
       - image: idubrov/rust-stm32:latest
     steps:
-      - run: cargo install clippy
       - checkout
       - run: cargo build
       - run: cargo test
