@@ -174,6 +174,7 @@ pub trait Hardware {
     }
 }
 
+/// Object implementing HD44780 protocol. Stateless (could be created as many times as needed).
 pub struct HD44780<HW: Hardware> {
     hw: HW
 }
@@ -197,7 +198,6 @@ impl<HW: Hardware + Delay> fast_fmt::Write for HD44780<HW> {
     fn size_hint(&mut self, _bytes: usize) {}
 }
 
-
 impl<HW: Hardware + Delay> HD44780<HW> {
     pub fn new(hw: HW) -> HD44780<HW> {
         HD44780 {
@@ -205,7 +205,14 @@ impl<HW: Hardware + Delay> HD44780<HW> {
         }
     }
 
-    pub fn init(&mut self) {
+    /// Initialize LCD display. Sets an equivalent of the following setup:
+    ///
+    /// ```rust
+    /// lcd.display(DisplayMode::DisplayOff, DisplayCursor::CursorOff, DisplayBlink::BlinkOff);
+    /// lcd.clear();
+    /// lcd.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::NoShift);
+    /// ```
+    pub fn init(&mut self, line: FunctionLine, dots: FunctionDots) {
         let mode = self.hw.mode();
         self.hw.rs(false);
         self.hw.wait_address();
@@ -246,10 +253,7 @@ impl<HW: Hardware + Delay> HD44780<HW> {
         }
 
         // Finally, set # lines, font size
-        self.command((Command::FunctionSet as u8) |
-            (mode as u8) |
-            (FunctionLine::Line2 as u8) |
-            (FunctionDots::Dots5x8 as u8));
+        self.command((Command::FunctionSet as u8) | (mode as u8) | (line as u8) | (dots as u8));
 
         // Now display should be properly initialized, we can check BF now
         // Though if we are not checking BF, waiting time is longer
@@ -259,6 +263,7 @@ impl<HW: Hardware + Delay> HD44780<HW> {
     }
 
 
+    /// Clears display and returns cursor to the home position (address 0).
     pub fn clear(&mut self) -> &Self {
         self.command(Command::ClearDisplay as u8);
         // This command could take as long as 1.52ms to execute
@@ -266,6 +271,8 @@ impl<HW: Hardware + Delay> HD44780<HW> {
         self
     }
 
+    /// Returns cursor to home position. Also returns display being shifted to the original position.
+    /// DDRAM content remains unchanged.
     pub fn home(&mut self) -> &Self {
         self.command(Command::ReturnHome as u8);
         // This command could take as long as 1.52ms to execute
@@ -273,22 +280,29 @@ impl<HW: Hardware + Delay> HD44780<HW> {
         self
     }
 
-    pub fn display(&mut self, display: DisplayMode, cursor: DisplayCursor, blink: DisplayBlink) -> &Self {
-        self.command((Command::DisplayControl as u8) | (display as u8) | (cursor as u8) | (blink as u8))
-    }
-
+    /// Sets cursor move direction (`entry`); specifies to shift the display (`scroll`).
+    /// These operations are performed during data read/write.
     pub fn entry_mode(&mut self, dir: EntryModeDirection, scroll: EntryModeShift) -> &Self {
         self.command((Command::EntryModeSet as u8) | (dir as u8) | (scroll as u8))
     }
 
+    /// Sets on/off of all display (`display`), cursor on/off (`cursor`), and blink of cursor
+    /// position character (`blink`).
+    pub fn display(&mut self, display: DisplayMode, cursor: DisplayCursor, blink: DisplayBlink) -> &Self {
+        self.command((Command::DisplayControl as u8) | (display as u8) | (cursor as u8) | (blink as u8))
+    }
+
+    /// Sets display-shift, direction (`dir`). DDRAM content remains unchanged.
     pub fn scroll(&mut self, dir: Direction) -> &Self {
         self.command((Command::CursorShift as u8) | (Scroll::DisplayMove as u8) | (dir as u8))
     }
 
+    /// Sets cursor-shift, direction (`dir`). DDRAM content remains unchanged.
     pub fn cursor(&mut self, dir: Direction) -> &Self {
         self.command((Command::CursorShift as u8) | (Scroll::CursorMove as u8) | (dir as u8))
     }
 
+    /// Sets the cursor position to the given row (`row`) and column (`col`).
     pub fn position(&mut self, col: u8, row: u8) {
         let offset = match row {
             1 => 0x40,
@@ -299,6 +313,7 @@ impl<HW: Hardware + Delay> HD44780<HW> {
         self.command((Command::SetDDRamAddr as u8) | (col + offset));
     }
 
+    /// Print given string (`str`) on the LCD screen.
     pub fn print(&mut self, str: &str) -> &Self {
         for c in str.as_bytes() {
             self.write(*c);
@@ -306,6 +321,7 @@ impl<HW: Hardware + Delay> HD44780<HW> {
         self
     }
 
+    /// Write given character (given as `data` of type `u8`) on the LCD screen.
     pub fn write(&mut self, data: u8) -> &Self {
         self.hw.rs(true);
         self.hw.wait_address(); // tAS
@@ -316,7 +332,12 @@ impl<HW: Hardware + Delay> HD44780<HW> {
         self
     }
 
+    /// Upload character image at given location. Only locations 0-7 are supported (panics otherwise).
+    /// Each character is represented by an array of 8 bytes, each byte being a row.
+    /// Only 5 bits are used from each byte (representing columns).
     pub fn upload_character(&mut self, location: u8, map: [u8; 8]) -> &Self {
+        assert!(location <= 7);
+
         // Only 8 locations are available
         self.command((Command::SetCGRamAddr as u8) | ((location & 0x7) << 3));
         for item in map.iter().take(8) {
@@ -431,7 +452,7 @@ mod tests {
     #[test]
     fn init_4bit() {
         let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit4));
-        lcd.init();
+        lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
 
         let vec = lcd.hw.commands();
         assert_eq!(vec, vec![
@@ -469,7 +490,7 @@ mod tests {
     #[test]
     fn init_8bit() {
         let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit8));
-        lcd.init();
+        lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
 
         let vec = lcd.hw.commands();
         assert_eq!(vec, vec![

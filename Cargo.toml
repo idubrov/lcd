@@ -4,7 +4,7 @@ categories = ["embedded", "no-std"]
 description = "Hitachi HD44780 support for STM32"
 repository = "https://github.com/idubrov/lcd"
 name = "lcd"
-version = "0.1.2-pre"
+version = "0.2.0-pre"
 license = "MIT OR Apache-2.0"
 
 [package.metadata.release]
