@@ -7,6 +7,9 @@ name = "lcd"
 version = "0.1.2-pre"
 license = "MIT OR Apache-2.0"
 
+[package.metadata.release]
+pre-release-hook = "./update-readme.sh"
+
 [dependencies.fast_fmt]
 optional = true
 default-features = false
