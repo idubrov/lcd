@@ -529,4 +529,88 @@ mod tests {
             "DELAY 50"
         ]);
     }
+
+    #[test]
+    fn clear_4bit() {
+        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit4));
+        lcd.clear();
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0001", "EN true", "DELAY 1", "EN false",
+            "DELAY 50",
+            "DELAY 2000"
+        ]);
+    }
+
+    #[test]
+    fn clear_8bit() {
+        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit8));
+        lcd.clear();
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b00000001", "EN true", "DELAY 1", "EN false",
+            "DELAY 50",
+            "DELAY 2000"
+        ]);
+    }
+
+    #[test]
+    fn home_4bit() {
+        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit4));
+        lcd.home();
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0010", "EN true", "DELAY 1", "EN false",
+            "DELAY 50",
+            "DELAY 2000"
+        ]);
+    }
+
+    #[test]
+    fn home_8bit() {
+        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit8));
+        lcd.home();
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b00000010", "EN true", "DELAY 1", "EN false",
+            "DELAY 50",
+            "DELAY 2000"
+        ]);
+    }
+
+    #[test]
+    fn entry_mode_4bit() {
+        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit4));
+        lcd.entry_mode(EntryModeDirection::EntryLeft, EntryModeShift::NoShift);
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0100", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+
+        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit4));
+        lcd.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::Shift);
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0111", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+    }
+
 }
