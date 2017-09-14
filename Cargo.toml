@@ -1,6 +1,7 @@
 [package]
 authors = ["Ivan Dubrov <dubrov.ivan@gmail.com>"]
 categories = ["embedded", "no-std"]
+keywords = ["lcd", "hd44780"]
 description = "Hitachi HD44780-compatible LCD screen support for embedded development"
 repository = "https://github.com/idubrov/lcd"
 name = "lcd"

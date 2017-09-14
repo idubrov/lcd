@@ -11,10 +11,10 @@ Provides high-level API to the [Hitachi HD44780][1]-compatible LCD device. Uses 
 by default (only uses 4 data pins) plus two control pins (R/S and EN). R/W pin is not used
 and should be wired for "write" (low-level, 0).
 
-The implementation is completely stateless. Client is free to reuse the same `HD44780` object
+The implementation is completely stateless. Client is free to reuse the same `Display` object
 or to create one every time access to LCD is required.
 
-`HD44780` also implements `core::fmt::Write` trait, so it could be used as a target of `write!`
+`Display` also implements `core::fmt::Write` trait, so it could be used as a target of `write!`
 macro.
 
 This library does not depend on `std` crate and could be used in bare metal embedded development.
@@ -57,7 +57,7 @@ impl Delay for HW {
 
 // create HAL and LCD instances
 let hw = HW { /* ... */ };
-let mut lcd = HD44780::new(hw);
+let mut lcd = Display::new(hw);
 
 // initialization
 lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);

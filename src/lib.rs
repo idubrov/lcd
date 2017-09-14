@@ -8,10 +8,10 @@
 //! by default (only uses 4 data pins) plus two control pins (R/S and EN). R/W pin is not used
 //! and should be wired for "write" (low-level, 0).
 //!
-//! The implementation is completely stateless. Client is free to reuse the same `HD44780` object
+//! The implementation is completely stateless. Client is free to reuse the same `Display` object
 //! or to create one every time access to LCD is required.
 //!
-//! `HD44780` also implements `core::fmt::Write` trait, so it could be used as a target of `write!`
+//! `Display` also implements `core::fmt::Write` trait, so it could be used as a target of `write!`
 //! macro.
 //!
 //! This library does not depend on `std` crate and could be used in bare metal embedded development.
@@ -60,7 +60,7 @@
 //!
 //! // create HAL and LCD instances
 //! let hw = HW { /* ... */ };
-//! let mut lcd = HD44780::new(hw);
+//! let mut lcd = Display::new(hw);
 //!
 //! // initialization
 //! lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
@@ -175,11 +175,11 @@ pub trait Hardware {
 }
 
 /// Object implementing HD44780 protocol. Stateless (could be created as many times as needed).
-pub struct HD44780<HW: Hardware> {
+pub struct Display<HW: Hardware> {
     hw: HW
 }
 
-impl<HW: Hardware + Delay> core::fmt::Write for HD44780<HW> {
+impl<HW: Hardware + Delay> core::fmt::Write for Display<HW> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         self.print(s);
         Ok(())
@@ -187,7 +187,7 @@ impl<HW: Hardware + Delay> core::fmt::Write for HD44780<HW> {
 }
 
 #[cfg(feature = "fast-format")]
-impl<HW: Hardware + Delay> fast_fmt::Write for HD44780<HW> {
+impl<HW: Hardware + Delay> fast_fmt::Write for Display<HW> {
     type Error = ();
 
     fn write_char(&mut self, val: char) -> Result<(), Self::Error> {
@@ -198,9 +198,9 @@ impl<HW: Hardware + Delay> fast_fmt::Write for HD44780<HW> {
     fn size_hint(&mut self, _bytes: usize) {}
 }
 
-impl<HW: Hardware + Delay> HD44780<HW> {
-    pub fn new(hw: HW) -> HD44780<HW> {
-        HD44780 {
+impl<HW: Hardware + Delay> Display<HW> {
+    pub fn new(hw: HW) -> Display<HW> {
+        Display {
             hw: hw
         }
     }
@@ -218,7 +218,7 @@ impl<HW: Hardware + Delay> HD44780<HW> {
     /// # impl Delay for HW {
     /// #   fn delay_us(&self, delay_usec: u32) { }
     /// # }
-    /// # let mut lcd = HD44780::new(HW {});
+    /// # let mut lcd = Display::new(HW {});
     /// lcd.display(DisplayMode::DisplayOff, DisplayCursor::CursorOff, DisplayBlink::BlinkOff);
     /// lcd.clear();
     /// lcd.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::NoShift);
@@ -462,7 +462,7 @@ mod tests {
 
     #[test]
     fn init_4bit() {
-        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit4));
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
         lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
 
         let vec = lcd.hw.commands();
@@ -500,7 +500,7 @@ mod tests {
 
     #[test]
     fn init_8bit() {
-        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit8));
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit8));
         lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
 
         let vec = lcd.hw.commands();
@@ -532,7 +532,7 @@ mod tests {
 
     #[test]
     fn clear_4bit() {
-        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit4));
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
         lcd.clear();
 
         let vec = lcd.hw.commands();
@@ -547,7 +547,7 @@ mod tests {
 
     #[test]
     fn clear_8bit() {
-        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit8));
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit8));
         lcd.clear();
 
         let vec = lcd.hw.commands();
@@ -561,7 +561,7 @@ mod tests {
 
     #[test]
     fn home_4bit() {
-        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit4));
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
         lcd.home();
 
         let vec = lcd.hw.commands();
@@ -576,7 +576,7 @@ mod tests {
 
     #[test]
     fn home_8bit() {
-        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit8));
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit8));
         lcd.home();
 
         let vec = lcd.hw.commands();
@@ -590,7 +590,7 @@ mod tests {
 
     #[test]
     fn entry_mode_4bit() {
-        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit4));
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
         lcd.entry_mode(EntryModeDirection::EntryLeft, EntryModeShift::NoShift);
 
         let vec = lcd.hw.commands();
@@ -601,7 +601,7 @@ mod tests {
             "DELAY 50"
         ]);
 
-        let mut lcd = HD44780::new(StringHw::new(FunctionMode::Bit4));
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
         lcd.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::Shift);
 
         let vec = lcd.hw.commands();
