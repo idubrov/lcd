@@ -3,6 +3,8 @@ jobs:
   build:
     docker:
       - image: idubrov/rust-stm32:latest
+    environment:
+      - RUSTFLAGS: "-C link-dead-code"
     steps:
       - checkout
       - run: cargo build
