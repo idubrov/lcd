@@ -1,6 +1,7 @@
 [![crates.io](https://img.shields.io/crates/v/lcd.svg)](https://crates.io/crates/lcd)
 [![crates.io](https://img.shields.io/crates/d/lcd.svg)](https://crates.io/crates/lcd)
-[![CircleCI](https://img.shields.io/circleci/project/github/idubrov/lcd.svg)]()
+[![CircleCI](https://img.shields.io/circleci/project/github/idubrov/lcd.svg)](https://circleci.com/gh/idubrov/lcd)
+[![Codecov](https://img.shields.io/codecov/c/github/idubrov/lcd.svg)](https://codecov.io/gh/idubrov/lcd)
 
 # lcd
 
@@ -59,7 +60,7 @@ let hw = HW { /* ... */ };
 let mut lcd = HD44780::new(hw);
 
 // initialization
-lcd.init();
+lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
 lcd.display(
     DisplayMode::DisplayOn,
     DisplayCursor::CursorOff,
