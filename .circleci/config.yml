@@ -10,13 +10,7 @@ jobs:
       - run: cargo build
       - run: cargo test
       - run: cargo clippy
-      - run:
-          name: Running code coverage
-          command: |
-            for file in target/debug/lcd-*[^\.d]; do
-              mkdir -p "target/cov/$(basename $file)"
-              kcov --exclude-pattern=/usr/local/cargo,/usr/lib --verify target/cov "$file"
-            done
+      - run: cargo kcov
       - run:
           name: Uploading code coverage
           command: |
