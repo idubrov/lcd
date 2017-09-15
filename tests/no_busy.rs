@@ -3,11 +3,15 @@ extern crate pretty_assertions;
 extern crate lcd;
 
 mod util;
-use lcd::*;
+use lcd::{FunctionMode, FunctionLine, FunctionDots, Direction, EntryModeShift, EntryModeDirection};
+
+// No implementation of InputCapableHardware for this one
+pub struct NoBusyFlag {}
+const BUSY: NoBusyFlag = NoBusyFlag {};
 
 #[test]
 fn init_4bit() {
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
     });
     assert_eq!(vec, vec![
@@ -44,7 +48,7 @@ fn init_4bit() {
 
 #[test]
 fn init_8bit() {
-    let vec = util::test(FunctionMode::Bit8, |lcd| {
+    let vec = util::test(FunctionMode::Bit8, BUSY, |lcd| {
         lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
     });
     assert_eq!(vec, vec![
@@ -75,7 +79,7 @@ fn init_8bit() {
 
 #[test]
 fn clear_4bit() {
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.clear();
     });
     assert_eq!(vec, vec![
@@ -89,7 +93,7 @@ fn clear_4bit() {
 
 #[test]
 fn clear_8bit() {
-    let vec = util::test(FunctionMode::Bit8, |lcd| {
+    let vec = util::test(FunctionMode::Bit8, BUSY, |lcd| {
         lcd.clear();
     });
     assert_eq!(vec, vec![
@@ -102,7 +106,7 @@ fn clear_8bit() {
 
 #[test]
 fn home_4bit() {
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.home();
     });
     assert_eq!(vec, vec![
@@ -116,7 +120,7 @@ fn home_4bit() {
 
 #[test]
 fn home_8bit() {
-    let vec = util::test(FunctionMode::Bit8, |lcd| {
+    let vec = util::test(FunctionMode::Bit8, BUSY, |lcd| {
         lcd.home();
     });
     assert_eq!(vec, vec![
@@ -129,7 +133,7 @@ fn home_8bit() {
 
 #[test]
 fn entry_mode_4bit() {
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.entry_mode(EntryModeDirection::EntryLeft, EntryModeShift::NoShift);
     });
     assert_eq!(vec, vec![
@@ -139,7 +143,7 @@ fn entry_mode_4bit() {
         "DELAY 50"
     ]);
 
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::Shift);
     });
     assert_eq!(vec, vec![
@@ -152,7 +156,7 @@ fn entry_mode_4bit() {
 
 #[test]
 fn scroll_4bit() {
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.scroll(Direction::Left);
     });
     assert_eq!(vec, vec![
@@ -162,7 +166,7 @@ fn scroll_4bit() {
         "DELAY 50"
     ]);
 
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.scroll(Direction::Right);
     });
     assert_eq!(vec, vec![
@@ -175,7 +179,7 @@ fn scroll_4bit() {
 
 #[test]
 fn cursor_4bit() {
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.cursor(Direction::Left);
     });
     assert_eq!(vec, vec![
@@ -185,7 +189,7 @@ fn cursor_4bit() {
         "DELAY 50"
     ]);
 
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.cursor(Direction::Right);
     });
     assert_eq!(vec, vec![
@@ -198,7 +202,7 @@ fn cursor_4bit() {
 
 #[test]
 fn position_4bit() {
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.position(3, 0);
     });
     assert_eq!(vec, vec![
@@ -208,7 +212,7 @@ fn position_4bit() {
         "DELAY 50"
     ]);
 
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.position(3, 1);
     });
     assert_eq!(vec, vec![
@@ -218,7 +222,7 @@ fn position_4bit() {
         "DELAY 50"
     ]);
 
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.position(7, 2);
     });
     assert_eq!(vec, vec![
@@ -228,7 +232,7 @@ fn position_4bit() {
         "DELAY 50"
     ]);
 
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.position(8, 3);
     });
     assert_eq!(vec, vec![
@@ -241,7 +245,7 @@ fn position_4bit() {
 
 #[test]
 fn print() {
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.print("hello");
     });
     assert_eq!(vec, vec![
@@ -281,7 +285,7 @@ fn upload() {
         0b01000
     ];
 
-    let vec = util::test(FunctionMode::Bit4, |lcd| {
+    let vec = util::test(FunctionMode::Bit4, BUSY, |lcd| {
         lcd.upload_character(3, ARROW);
     });
     assert_eq!(vec, vec![

@@ -1,6 +1,7 @@
 #![no_std]
 #![feature(const_fn)]
 #![deny(warnings)]
+#![feature(specialization)]
 
 //! Library that implements low-level protocol to the [Hitachi HD44780][1]-compatible LCD device.
 //!
@@ -174,9 +175,24 @@ pub trait Hardware {
     }
 }
 
+pub trait InputCapableHardware: Hardware {
+    /// Set R/W flag.
+    /// Implementation should re-configure data port (D0-D7) for the input when bit is `true` and
+    /// configure it back to output when bit is `false`
+    ///
+    /// Note that LCD driver typically uses 5V, so input should be tolerant to 5V when using busy
+    /// flag.
+    fn rw(&self, _bit: bool);
+    fn read_data(&self) -> u8;
+}
+
 /// Object implementing HD44780 protocol. Stateless (could be created as many times as needed).
 pub struct Display<HW: Hardware + Delay> {
     hw: HW
+}
+
+trait WaitReady {
+    fn wait_ready(&self, delay: u32);
 }
 
 impl<HW: Hardware + Delay> core::fmt::Write for Display<HW> {
@@ -201,7 +217,7 @@ impl<HW: Hardware + Delay> fast_fmt::Write for Display<HW> {
 impl<HW: Hardware + Delay> Display<HW> {
     pub fn new(hw: HW) -> Display<HW> {
         Display {
-            hw: hw
+            hw
         }
     }
 
@@ -371,10 +387,6 @@ impl<HW: Hardware + Delay> Display<HW> {
         self.wait_ready(50);
     }
 
-    fn wait_ready(&self, delay: u32) {
-        self.hw.delay_us(delay);
-    }
-
     fn pulse_enable(&self) {
         self.hw.enable(true);
         self.hw.delay_us(1); // minimum delay is 450 ns
@@ -396,5 +408,50 @@ impl<HW: Hardware + Delay> Display<HW> {
     fn send_data(&self, data: u8) {
         self.hw.data(data);
         self.pulse_enable();
+    }
+}
+
+impl<HW: Hardware + Delay> WaitReady for Display<HW> {
+    default fn wait_ready(&self, delay: u32) {
+        self.hw.delay_us(delay);
+    }
+}
+
+impl<HW: Hardware + Delay + InputCapableHardware> Display<HW> {
+    fn receive_data(&self) -> u8 {
+        self.hw.enable(true);
+        self.hw.delay_us(1);
+        let data = self.hw.read_data();
+        self.hw.delay_us(1);
+        self.hw.enable(false);
+        data
+    }
+
+    fn receive(&self) -> u8 {
+        match self.hw.mode() {
+            FunctionMode::Bit8 => {
+                self.receive_data()
+            }
+            FunctionMode::Bit4 => {
+                // FIXME: should we delay betwen enable=>false and enable=>true?
+                (self.receive_data() << 4) | (self.receive_data() & 0xf)
+            }
+        }
+    }
+}
+
+impl<HW: Hardware + Delay + InputCapableHardware> WaitReady for Display<HW> {
+    fn wait_ready(&self, _delay: u32) {
+        // Set read mode
+        self.hw.rw(true);
+
+        self.hw.rs(false);
+        self.hw.wait_address(); // tAS
+
+        while self.receive() & 0b1000_0000 != 0 { }
+        // tAH is 10ns, which is less than one cycle. So we don't have to wait.
+
+        // Back to write mode
+        self.hw.rw(false);
     }
 }

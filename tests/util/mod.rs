@@ -3,18 +3,25 @@ use std::string::String;
 use std::vec::Vec;
 use std::cell::RefCell;
 
-pub struct StringHw<'a> {
-    commands: &'a RefCell<Vec<String>>,
-    mode: FunctionMode,
+pub struct BufferHardware<'a, T: 'a> {
+    pub commands: &'a RefCell<Vec<String>>,
+    pub mode: FunctionMode,
+    pub busy: RefCell<T>
 }
 
-impl <'a> Hardware for StringHw<'a> {
+impl<'a, T> BufferHardware<'a, T> {
+    pub fn command(&self, cmd: String) {
+        self.commands.borrow_mut().push(cmd);
+    }
+}
+
+impl<'a, T> Hardware for BufferHardware<'a, T> {
     fn rs(&self, bit: bool) {
-        self.commands.borrow_mut().push(format!("R/S {}", bit));
+        self.command(format!("R/S {}", bit));
     }
 
     fn enable(&self, bit: bool) {
-        self.commands.borrow_mut().push(format!("EN {}", bit));
+        self.command(format!("EN {}", bit));
     }
 
     fn data(&self, data: u8) {
@@ -22,7 +29,7 @@ impl <'a> Hardware for StringHw<'a> {
             FunctionMode::Bit4 => format!("DATA 0b{:04b}", data),
             FunctionMode::Bit8 => format!("DATA 0b{:08b}", data),
         };
-        self.commands.borrow_mut().push(str);
+        self.command(str);
     }
 
     fn mode(&self) -> FunctionMode {
@@ -31,21 +38,20 @@ impl <'a> Hardware for StringHw<'a> {
     }
 }
 
-impl <'a> Delay for StringHw<'a> {
+impl<'a, T> Delay for BufferHardware<'a, T> {
     fn delay_us(&self, delay: u32) {
-        self.commands.borrow_mut().push(format!("DELAY {}", delay));
+        self.command(format!("DELAY {}", delay));
     }
 }
 
-pub fn test<F>(mode: FunctionMode, ops: F) -> Vec<String>
-    where F: Fn(&mut Display<StringHw>) {
+pub fn test<F, T>(mode: FunctionMode, busy: T, ops: F) -> Vec<String>
+    where F: Fn(&mut Display<BufferHardware<T>>) {
     let commands = RefCell::new(Vec::new());
-    let hw = StringHw {
+    ops(&mut Display::new(BufferHardware {
         commands: &commands,
-        mode
-    };
-    let mut lcd = Display::new(hw);
-    ops(&mut lcd);
+        mode,
+        busy: RefCell::new(busy)
+    }));
     let result = commands.borrow().clone();
     result
 }
