@@ -613,4 +613,187 @@ mod tests {
         ]);
     }
 
+    #[test]
+    fn scroll_4bit() {
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
+        lcd.scroll(Direction::Left);
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b0001", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1000", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
+        lcd.scroll(Direction::Right);
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b0001", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1100", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+    }
+
+    #[test]
+    fn cursor_4bit() {
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
+        lcd.cursor(Direction::Left);
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b0001", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
+        lcd.cursor(Direction::Right);
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b0001", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0100", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+    }
+
+    #[test]
+    fn position_4bit() {
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
+        lcd.position(3, 0);
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b1000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0011", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
+        lcd.position(3, 1);
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b1100", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0011", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
+        lcd.position(7, 2);
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b1001", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1011", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
+        lcd.position(8, 3);
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b1101", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1100", "EN true", "DELAY 1", "EN false",
+            "DELAY 50"
+        ]);
+    }
+
+    #[test]
+    fn print() {
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
+        lcd.print("hello");
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S true",
+            "DATA 0b0110", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1000", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+            "R/S true",
+            "DATA 0b0110", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0101", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+            "R/S true",
+            "DATA 0b0110", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1100", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+            "R/S true",
+            "DATA 0b0110", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1100", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+            "R/S true",
+            "DATA 0b0110","EN true", "DELAY 1", "EN false",
+            "DATA 0b1111", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5"
+        ]);
+    }
+
+    #[test]
+    fn upload() {
+        const ARROW: [u8; 8] = [
+            0b00000,
+            0b01000,
+            0b01100,
+            0b01110,
+            0b11111,
+            0b01110,
+            0b01100,
+            0b01000
+        ];
+
+        let mut lcd = Display::new(StringHw::new(FunctionMode::Bit4));
+        lcd.upload_character(3, ARROW);
+
+        let vec = lcd.hw.commands();
+        assert_eq!(vec, vec![
+            "R/S false",
+            "DATA 0b0101", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1000", "EN true", "DELAY 1", "EN false",
+            "DELAY 50",
+            "R/S true",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+            "R/S true",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1000", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+            "R/S true",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1100", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+            "R/S true",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1110", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+            "R/S true",
+            "DATA 0b0001", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1111", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+            "R/S true",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1110", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+            "R/S true",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1100", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+            "R/S true",
+            "DATA 0b0000", "EN true", "DELAY 1", "EN false",
+            "DATA 0b1000", "EN true", "DELAY 1", "EN false",
+            "DELAY 50", "DELAY 5",
+        ]);
+    }
 }
