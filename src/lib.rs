@@ -244,7 +244,7 @@ impl<HW: Hardware + Delay> Display<HW> {
                 self.hw.delay_us(150); // Wait for more than 100us
 
                 self.pulse_enable(); // Repeat for the third time
-                self.wait_ready();
+                self.wait_ready_default();
             }
             FunctionMode::Bit4 => {
                 // Run initialization procedure for the display (4-bit mode).
@@ -255,11 +255,11 @@ impl<HW: Hardware + Delay> Display<HW> {
                 self.hw.delay_us(150); // Wait for more than 100us
 
                 self.pulse_enable(); // Repeat for the third time
-                self.wait_ready(); // Wait fo FunctionSet to finish
+                self.wait_ready_default(); // Wait fo FunctionSet to finish
 
                 // Now we switch to 4-bit mode
                 self.send_data(((Command::FunctionSet as u8) | (FunctionMode::Bit4 as u8)) >> 4);
-                self.wait_ready(); // Wait for FunctionSet to finish
+                self.wait_ready_default(); // Wait for FunctionSet to finish
             }
         }
 
@@ -278,7 +278,7 @@ impl<HW: Hardware + Delay> Display<HW> {
     pub fn clear(&mut self) -> &Self {
         self.command(Command::ClearDisplay as u8);
         // This command could take as long as 1.52ms to execute
-        self.wait_ready_long(2000);
+        self.wait_ready(2000);
         self
     }
 
@@ -287,7 +287,7 @@ impl<HW: Hardware + Delay> Display<HW> {
     pub fn home(&mut self) -> &Self {
         self.command(Command::ReturnHome as u8);
         // This command could take as long as 1.52ms to execute
-        self.wait_ready_long(2000);
+        self.wait_ready(2000);
         self
     }
 
@@ -337,7 +337,7 @@ impl<HW: Hardware + Delay> Display<HW> {
         self.hw.rs(true);
         self.hw.wait_address(); // tAS
         self.send(data);
-        self.wait_ready();
+        self.wait_ready_default();
         // It takes 4us more (tADD) to update address counter
         self.hw.delay_us(5);
         self
@@ -361,16 +361,17 @@ impl<HW: Hardware + Delay> Display<HW> {
         self.hw.rs(false);
         self.hw.wait_address(); // tAS
         self.send(cmd);
-        self.wait_ready();
+        self.wait_ready_default();
         self
     }
 
+
     // Typical command wait time is 37us
-    fn wait_ready(&self) {
-        self.hw.delay_us(50);
+    fn wait_ready_default(&self) {
+        self.wait_ready(50);
     }
 
-    fn wait_ready_long(&self, delay: u32) {
+    fn wait_ready(&self, delay: u32) {
         self.hw.delay_us(delay);
     }
 
