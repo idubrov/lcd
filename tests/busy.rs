@@ -17,8 +17,8 @@ impl<'a> lcd::InputCapableHardware for util::BufferHardware<'a, InputData> {
     }
 
     fn read_data(&self) -> u8 {
-        self.command(format!("BUSY..."));
-        self.busy.borrow_mut().data.pop().unwrap()
+        self.command(format!("IS BUSY?"));
+        self.busy.borrow_mut().data.remove(0)
     }
 }
 
@@ -41,58 +41,142 @@ fn init_4bit() {
         "EN true", "DELAY 1", "EN false", "DELAY 150",
         "EN true", "DELAY 1", "EN false",
         // Check busy
-        "RW true", "R/S false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
+        "R/S false",
+        "RW true",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
         "RW false",
         // Switch to 4-bit mode
         "DATA 0b0010", "EN true", "DELAY 1", "EN false",
         // Check busy
-        "RW true", "R/S false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
+        "R/S false",
+        "RW true",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
         "RW false",
         // Set lines, font size
         "R/S false",
         "DATA 0b0010", "EN true", "DELAY 1", "EN false",
         "DATA 0b1000", "EN true", "DELAY 1", "EN false",
         // Check busy
-        "RW true", "R/S false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
+        "R/S false",
+        "RW true",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
         "RW false",
         // Display
         "R/S false",
         "DATA 0b0000", "EN true", "DELAY 1", "EN false",
         "DATA 0b1000", "EN true", "DELAY 1", "EN false",
         // Check busy
-        "RW true", "R/S false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
+        "R/S false",
+        "RW true",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
         "RW false",
         // Clear
         "R/S false",
         "DATA 0b0000", "EN true", "DELAY 1", "EN false",
         "DATA 0b0001", "EN true", "DELAY 1", "EN false",
         // Check busy
-        "RW true", "R/S false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
+        "R/S false",
+        "RW true",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
         "RW false",
         // FIXME: no harm, but should not really wait for busy again...
         // Check busy again
-        "RW true", "R/S false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
+        "R/S false",
+        "RW true",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
         "RW false",
         // Entry mode
         "R/S false",
         "DATA 0b0000", "EN true", "DELAY 1", "EN false",
         "DATA 0b0110", "EN true", "DELAY 1", "EN false",
         // Check busy
-        "RW true", "R/S false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
-        "EN true", "DELAY 1", "BUSY...", "DELAY 1", "EN false",
+        "R/S false",
+        "RW true",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
         "RW false"
+    ]);
+}
+
+#[test]
+fn write_4bit() {
+    let vec = util::test(FunctionMode::Bit4, with_data(vec![0, 0]), |lcd| {
+        lcd.write('a' as u8);
+    });
+    assert_eq!(vec, vec![
+        "R/S true",
+        "DATA 0b0110", "EN true", "DELAY 1", "EN false",
+        "DATA 0b0001", "EN true", "DELAY 1", "EN false",
+        "R/S false",
+        "RW true",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "RW false",
+        "DELAY 5"
+    ]);
+}
+
+#[test]
+fn write_8bit() {
+    let vec = util::test(FunctionMode::Bit8, with_data(vec![0]), |lcd| {
+        lcd.write('a' as u8);
+    });
+    assert_eq!(vec, vec![
+        "R/S true",
+        "DATA 0b01100001", "EN true", "DELAY 1", "EN false",
+        "R/S false",
+        "RW true",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "RW false",
+        "DELAY 5"
+    ]);
+}
+
+#[test]
+fn write_4bit_long_busy() {
+    let vec = util::test(FunctionMode::Bit4, with_data(vec![8, 0, 8, 0, 8, 0, 0, 0]), |lcd| {
+        lcd.write('a' as u8);
+    });
+    assert_eq!(vec, vec![
+        "R/S true",
+        "DATA 0b0110", "EN true", "DELAY 1", "EN false",
+        "DATA 0b0001", "EN true", "DELAY 1", "EN false",
+        "R/S false",
+        "RW true",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "RW false",
+        "DELAY 5"
+    ]);
+}
+
+#[test]
+fn write_8bit_long_busy() {
+    let vec = util::test(FunctionMode::Bit8, with_data(vec![128, 128, 128, 0]), |lcd| {
+        lcd.write('a' as u8);
+    });
+    assert_eq!(vec, vec![
+        "R/S true",
+        "DATA 0b01100001", "EN true", "DELAY 1", "EN false",
+        "R/S false",
+        "RW true",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "EN true", "DELAY 1", "IS BUSY?", "DELAY 1", "EN false",
+        "RW false",
+        "DELAY 5"
     ]);
 }

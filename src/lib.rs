@@ -433,7 +433,6 @@ impl<HW: Hardware + Delay + InputCapableHardware> Display<HW> {
                 self.receive_data()
             }
             FunctionMode::Bit4 => {
-                // FIXME: should we delay betwen enable=>false and enable=>true?
                 (self.receive_data() << 4) | (self.receive_data() & 0xf)
             }
         }
@@ -442,10 +441,10 @@ impl<HW: Hardware + Delay + InputCapableHardware> Display<HW> {
 
 impl<HW: Hardware + Delay + InputCapableHardware> WaitReady for Display<HW> {
     fn wait_ready(&self, _delay: u32) {
-        // Set read mode
-        self.hw.rw(true);
-
         self.hw.rs(false);
+
+        // Read mode
+        self.hw.rw(true);
         self.hw.wait_address(); // tAS
 
         while self.receive() & 0b1000_0000 != 0 { }
