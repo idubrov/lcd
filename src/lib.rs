@@ -59,6 +59,17 @@
 //!     }
 //! }
 //!
+//! // optionally, implement `InputCapableHardware` to enable polling busy flag instead of delay
+//! impl InputCapableHardware for HW {
+//!     fn rw(&self, bit: bool) {
+//!         // configure pins for input _before_ setting R/W to 1
+//!         // configure pins for output _after_ setting R/W to 0
+//!     }
+//!     fn read_data(&self) -> u8 {
+//!         0 // read data from the port
+//!     }
+//! }
+//!
 //! // create HAL and LCD instances
 //! let hw = HW { /* ... */ };
 //! let mut lcd = Display::new(hw);
@@ -177,12 +188,14 @@ pub trait Hardware {
 
 pub trait InputCapableHardware: Hardware {
     /// Set R/W flag.
-    /// Implementation should re-configure data port (D0-D7) for the input when bit is `true` and
-    /// configure it back to output when bit is `false`
+    /// Implementation should re-configure data port (D0-D7) for input _before_ setting R/W pin
+    /// to `true` and configure data port (D0-D7) for output _after_ setting R/W to `false`.
     ///
     /// Note that LCD driver typically uses 5V, so input should be tolerant to 5V when using busy
     /// flag.
-    fn rw(&self, _bit: bool);
+    fn rw(&self, bit: bool);
+
+    /// Read data from the data pins of the LCD (D0-D7 in 8-bit mode and D4-D7 in 4-bit mode)
     fn read_data(&self) -> u8;
 }
 

@@ -55,6 +55,17 @@ impl Delay for HW {
     }
 }
 
+// optionally, implement `InputCapableHardware` to enable polling busy flag instead of delay
+impl InputCapableHardware for HW {
+    fn rw(&self, bit: bool) {
+        // configure pins for input _before_ setting R/W to 1
+        // configure pins for output _after_ setting R/W to 0
+    }
+    fn read_data(&self) -> u8 {
+        0 // read data from the port
+    }
+}
+
 // create HAL and LCD instances
 let hw = HW { /* ... */ };
 let mut lcd = Display::new(hw);
