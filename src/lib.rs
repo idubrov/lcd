@@ -52,10 +52,10 @@
 //!     }
 //! }
 //!
-//! // implement `Delay` trait to allow library to sleep for given amount of time
+//! // implement `Delay` trait to allow library to sleep for the given amount of time
 //! impl Delay for HW {
 //!     fn delay_us(&self, delay_usec: u32) {
-//!         // should delay for the given amount of microseconds
+//!         // should sleep for the given amount of microseconds
 //!     }
 //! }
 //!
@@ -85,6 +85,9 @@
 //! // print something
 //! write!(&mut lcd, "Hello, my number today is {: >4}", 42).unwrap();
 //! ```
+//!
+//! See [`lcd-example-bluepill`](https://github.com/idubrov/lcd-example-bluepill) for the working example
+//! for the [Blue Pill](http://wiki.stm32duino.com/index.php?title=Blue_Pill) development board.
 //!
 //! [1]: https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller
 
