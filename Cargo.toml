@@ -5,7 +5,7 @@ keywords = ["lcd", "hd44780"]
 description = "Hitachi HD44780-compatible LCD screen support for embedded development"
 repository = "https://github.com/idubrov/lcd"
 name = "lcd"
-version = "0.2.1"
+version = "0.2.2-alpha.0"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 
