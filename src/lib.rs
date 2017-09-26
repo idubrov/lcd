@@ -203,15 +203,15 @@ pub trait InputCapableHardware: Hardware {
 }
 
 /// Object implementing HD44780 protocol. Stateless (could be created as many times as needed).
-pub struct Display<HW: Hardware + Delay> {
-    hw: HW
+pub struct Display<'a, HW: 'a + Hardware + Delay> {
+    hw: &'a HW
 }
 
 trait WaitReady {
     fn wait_ready(&self, delay: u32);
 }
 
-impl<HW: Hardware + Delay> core::fmt::Write for Display<HW> {
+impl<'a, HW: Hardware + Delay> core::fmt::Write for Display<'a, HW> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         self.print(s);
         Ok(())
@@ -219,7 +219,7 @@ impl<HW: Hardware + Delay> core::fmt::Write for Display<HW> {
 }
 
 #[cfg(feature = "fast-format")]
-impl<HW: Hardware + Delay> fast_fmt::Write for Display<HW> {
+impl<'a, HW: Hardware + Delay> fast_fmt::Write for Display<'a, HW> {
     type Error = ();
 
     fn write_char(&mut self, val: char) -> Result<(), Self::Error> {
@@ -230,8 +230,8 @@ impl<HW: Hardware + Delay> fast_fmt::Write for Display<HW> {
     fn size_hint(&mut self, _bytes: usize) {}
 }
 
-impl<HW: Hardware + Delay> Display<HW> {
-    pub fn new(hw: HW) -> Display<HW> {
+impl<'a, HW: Hardware + Delay> Display<'a, HW> {
+    pub fn new(hw: &'a HW) -> Display<'a, HW> {
         Display {
             hw
         }
@@ -427,13 +427,13 @@ impl<HW: Hardware + Delay> Display<HW> {
     }
 }
 
-impl<HW: Hardware + Delay> WaitReady for Display<HW> {
+impl<'a, HW: Hardware + Delay> WaitReady for Display<'a, HW> {
     default fn wait_ready(&self, delay: u32) {
         self.hw.delay_us(delay);
     }
 }
 
-impl<HW: Hardware + Delay + InputCapableHardware> Display<HW> {
+impl<'a, HW: Hardware + Delay + InputCapableHardware> Display<'a, HW> {
     fn receive_data(&self) -> u8 {
         self.hw.enable(true);
         self.hw.delay_us(1);
@@ -455,7 +455,7 @@ impl<HW: Hardware + Delay + InputCapableHardware> Display<HW> {
     }
 }
 
-impl<HW: Hardware + Delay + InputCapableHardware> WaitReady for Display<HW> {
+impl<'a, HW: Hardware + Delay + InputCapableHardware> WaitReady for Display<'a, HW> {
     fn wait_ready(&self, _delay: u32) {
         self.hw.rs(false);
 

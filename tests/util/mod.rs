@@ -3,19 +3,19 @@ use std::string::String;
 use std::vec::Vec;
 use std::cell::RefCell;
 
-pub struct BufferHardware<'a, T: 'a> {
-    pub commands: &'a RefCell<Vec<String>>,
+pub struct BufferHardware<T> {
+    pub commands: RefCell<Vec<String>>,
     pub mode: FunctionMode,
     pub busy: RefCell<T>
 }
 
-impl<'a, T> BufferHardware<'a, T> {
+impl<T> BufferHardware<T> {
     pub fn command(&self, cmd: String) {
         self.commands.borrow_mut().push(cmd);
     }
 }
 
-impl<'a, T> Hardware for BufferHardware<'a, T> {
+impl<T> Hardware for BufferHardware<T> {
     fn rs(&self, bit: bool) {
         self.command(format!("R/S {}", bit));
     }
@@ -38,7 +38,7 @@ impl<'a, T> Hardware for BufferHardware<'a, T> {
     }
 }
 
-impl<'a, T> Delay for BufferHardware<'a, T> {
+impl<'a, T> Delay for BufferHardware<T> {
     fn delay_us(&self, delay: u32) {
         self.command(format!("DELAY {}", delay));
     }
@@ -46,12 +46,12 @@ impl<'a, T> Delay for BufferHardware<'a, T> {
 
 pub fn test<F, T>(mode: FunctionMode, busy: T, ops: F) -> Vec<String>
     where F: Fn(&mut Display<BufferHardware<T>>) {
-    let commands = RefCell::new(Vec::new());
-    ops(&mut Display::new(BufferHardware {
-        commands: &commands,
+    let hw = BufferHardware {
+        commands: RefCell::new(Vec::new()),
         mode,
         busy: RefCell::new(busy)
-    }));
-    let result = commands.borrow().clone();
+    };
+    ops(&mut Display::new(&hw));
+    let result = hw.commands.borrow().clone();
     result
 }

@@ -11,7 +11,7 @@ pub struct InputData {
     data: Vec<u8>,
 }
 
-impl<'a> lcd::InputCapableHardware for util::BufferHardware<'a, InputData> {
+impl lcd::InputCapableHardware for util::BufferHardware<InputData> {
     fn rw(&self, bit: bool) {
         self.command(format!("RW {}", bit));
     }
