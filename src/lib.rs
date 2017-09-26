@@ -72,7 +72,7 @@
 //!
 //! // create HAL and LCD instances
 //! let hw = HW { /* ... */ };
-//! let mut lcd = Display::new(hw);
+//! let mut lcd = Display::new(&hw);
 //!
 //! // initialization
 //! lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
@@ -250,7 +250,8 @@ impl<'a, HW: Hardware + Delay> Display<'a, HW> {
     /// # impl Delay for HW {
     /// #   fn delay_us(&self, delay_usec: u32) { }
     /// # }
-    /// # let mut lcd = Display::new(HW {});
+    /// # let hw = HW {};
+    /// # let mut lcd = Display::new(&hw);
     /// lcd.display(DisplayMode::DisplayOff, DisplayCursor::CursorOff, DisplayBlink::BlinkOff);
     /// lcd.clear();
     /// lcd.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::NoShift);
