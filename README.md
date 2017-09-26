@@ -68,7 +68,7 @@ impl InputCapableHardware for HW {
 
 // create HAL and LCD instances
 let hw = HW { /* ... */ };
-let mut lcd = Display::new(hw);
+let mut lcd = Display::new(&hw);
 
 // initialization
 lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
