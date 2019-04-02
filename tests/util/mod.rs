@@ -1,30 +1,29 @@
 use lcd::*;
 use std::string::String;
 use std::vec::Vec;
-use std::cell::RefCell;
 
-pub struct BufferHardware<T> {
-    pub commands: RefCell<Vec<String>>,
+pub struct BufferHardware {
+    pub commands: Vec<String>,
+    pub input: Option<Vec<u8>>,
     pub mode: FunctionMode,
-    pub busy: RefCell<T>
 }
 
-impl<T> BufferHardware<T> {
-    pub fn command(&self, cmd: String) {
-        self.commands.borrow_mut().push(cmd);
+impl BufferHardware {
+    pub fn command(&mut self, cmd: String) {
+        self.commands.push(cmd);
     }
 }
 
-impl<T> Hardware for BufferHardware<T> {
-    fn rs(&self, bit: bool) {
+impl Hardware for BufferHardware {
+    fn rs(&mut self, bit: bool) {
         self.command(format!("R/S {}", bit));
     }
 
-    fn enable(&self, bit: bool) {
+    fn enable(&mut self, bit: bool) {
         self.command(format!("EN {}", bit));
     }
 
-    fn data(&self, data: u8) {
+    fn data(&mut self, data: u8) {
         let str = match self.mode {
             FunctionMode::Bit4 => format!("DATA 0b{:04b}", data),
             FunctionMode::Bit8 => format!("DATA 0b{:08b}", data),
@@ -36,22 +35,34 @@ impl<T> Hardware for BufferHardware<T> {
         let mode = self.mode;
         mode
     }
+
+    fn can_read(&self) -> bool {
+        self.input.is_some()
+    }
+
+    fn rw(&mut self, bit: bool) {
+        self.command(format!("RW {}", bit));
+    }
+
+    fn read_data(&mut self) -> u8 {
+        self.command(format!("IS BUSY?"));
+        self.input.as_mut().unwrap().remove(0)
+    }
 }
 
-impl<'a, T> Delay for BufferHardware<T> {
-    fn delay_us(&self, delay: u32) {
+impl Delay for BufferHardware {
+    fn delay_us(&mut self, delay: u32) {
         self.command(format!("DELAY {}", delay));
     }
 }
 
-pub fn test<F, T>(mode: FunctionMode, busy: T, ops: F) -> Vec<String>
-    where F: Fn(&mut Display<BufferHardware<T>>) {
+pub fn test(mode: FunctionMode, input: Option<Vec<u8>>, ops: impl Fn(&mut Display<BufferHardware>)) -> Vec<String> {
     let hw = BufferHardware {
-        commands: RefCell::new(Vec::new()),
+        commands: vec![],
+        input,
         mode,
-        busy: RefCell::new(busy)
     };
-    ops(&mut Display::new(&hw));
-    let result = hw.commands.borrow().clone();
-    result
+    let mut display = Display::new(hw);
+    ops(&mut display);
+    display.unwrap().commands
 }

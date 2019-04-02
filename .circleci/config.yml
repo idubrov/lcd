@@ -2,15 +2,21 @@ version: 2
 jobs:
   build:
     docker:
-      - image: idubrov/rust-stm32:latest
+      - image: rust
     environment:
-      - RUSTFLAGS: "-C link-dead-code"
+      - RUSTDOCFLAGS: "-Cpanic=abort"
     steps:
       - checkout
+      - run: RUSTFLAGS="--cfg procmacro2_semver_exempt" cargo install cargo-tarpaulin
+      - run: rustup toolchain install nightly
+      - run: rustup component add clippy
       - run: cargo build
       - run: cargo test
       - run: cargo clippy
-      - run: cargo kcov
+      - run: cargo tarpaulin --out Xml
+      - run: cargo +nightly build
+      - run: cargo +nightly test
+      - run: cargo +nightly clippy
       - run:
           name: Uploading code coverage
           command: |

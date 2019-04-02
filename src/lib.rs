@@ -21,13 +21,13 @@
 //! ```rust,no_run
 //! #![no_std]
 //! # #![feature(lang_items)]
-//! # #![feature(start)]
-//! # #[lang = "eh_personality"] fn eh_personality() {}
-//! # #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
-//! # #[start]
-//! # fn start(_argc: isize, _argv: *const *const u8) -> isize { 0 }
+//! # //#[lang = "eh_personality"] fn eh_personality() {}
+//!
 //! use core::fmt::Write; // for write!
 //! use lcd::*;
+//!
+//! # #[panic_handler]
+//! # fn panic(_info: &core::panic::PanicInfo) -> ! { loop { } }
 //!
 //! // implement HAL...
 //! struct HW {
@@ -36,13 +36,13 @@
 //!
 //! // implement `Hardware` trait to give access to LCD pins
 //! impl Hardware for HW {
-//!     fn rs(&self, bit: bool) {
+//!     fn rs(&mut self, bit: bool) {
 //!         // should set R/S pin on LCD screen
 //!     }
-//!     fn enable(&self, bit: bool) {
+//!     fn enable(&mut self, bit: bool) {
 //!         // should set EN pin on LCD screen
 //!     }
-//!     fn data(&self, data: u8) {
+//!     fn data(&mut self, data: u8) {
 //!         // should set data bits to the LCD screen (only lowest 4 bits are used in 4-bit mode).
 //!     }
 //!
@@ -50,29 +50,33 @@
 //!     fn mode(&self) -> lcd::FunctionMode {
 //!         lcd::FunctionMode::Bit8
 //!     }
-//! }
 //!
-//! // implement `Delay` trait to allow library to sleep for the given amount of time
-//! impl Delay for HW {
-//!     fn delay_us(&self, delay_usec: u32) {
-//!         // should sleep for the given amount of microseconds
+//!     // optionally, implement the following three functions to enable polling busy flag instead of delay
+//!     fn can_read(&self) -> bool {
+//!         true
 //!     }
-//! }
 //!
-//! // optionally, implement `InputCapableHardware` to enable polling busy flag instead of delay
-//! impl InputCapableHardware for HW {
-//!     fn rw(&self, bit: bool) {
+//!     fn rw(&mut self, bit: bool) {
 //!         // configure pins for input _before_ setting R/W to 1
 //!         // configure pins for output _after_ setting R/W to 0
 //!     }
-//!     fn read_data(&self) -> u8 {
+//!     fn read_data(&mut self) -> u8 {
 //!         0 // read data from the port
 //!     }
 //! }
 //!
+//! // implement `Delay` trait to allow library to sleep for the given amount of time
+//! impl Delay for HW {
+//!     fn delay_us(&mut self, delay_usec: u32) {
+//!         // should sleep for the given amount of microseconds
+//!     }
+//! }
+//!
+//! # fn main() {
+//!
 //! // create HAL and LCD instances
 //! let hw = HW { /* ... */ };
-//! let mut lcd = Display::new(&hw);
+//! let mut lcd = Display::new(hw);
 //!
 //! // initialization
 //! lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
@@ -84,6 +88,8 @@
 //!
 //! // print something
 //! write!(&mut lcd, "Hello, my number today is {: >4}", 42).unwrap();
+//!
+//! # }
 //! ```
 //!
 //! See [`lcd-example-bluepill`](https://github.com/idubrov/lcd-example-bluepill) for the working example
@@ -171,47 +177,70 @@ pub enum Command {
 
 pub trait Delay {
     /// Delay for given amount of time (in microseconds).
-    fn delay_us(&self, delay_usec: u32);
+    fn delay_us(&mut self, delay_usec: u32);
 }
 
-pub trait Hardware {
+trait InternalHardware {
     fn rs(&self, bit: bool);
     fn enable(&self, bit: bool);
     fn data(&self, data: u8);
+    fn wait_address(&self) {}
+    fn mode(&self) -> FunctionMode;
+    fn rw(&self, bit: bool);
+    fn read_data(&self) -> u8;
+}
+
+pub trait Hardware {
+    fn rs(&mut self, bit: bool);
+    fn enable(&mut self, bit: bool);
+    fn data(&mut self, data: u8);
 
     /// Address set up time is 40ns minimum (tAS)
     /// This function should be overridden in case processor is too fast for 40ns to pass.
-    fn wait_address(&self) {}
+    fn wait_address(&mut self) {}
 
     /// Override to pick 8-bit mode (4-bit mode by default)
     fn mode(&self) -> FunctionMode {
         FunctionMode::Bit4
     }
-}
 
-pub trait InputCapableHardware: Hardware {
+    /// If this implementation can read from the data port. Default is `false`. If `true` is
+    /// returned, both `set_read` and `read_data` need to be implemented.
+    fn can_read(&self) -> bool {
+        false
+    }
+
     /// Set R/W flag.
-    /// Implementation should re-configure data port (D0-D7) for input _before_ setting R/W pin
-    /// to `true` and configure data port (D0-D7) for output _after_ setting R/W to `false`.
+    ///
+    /// Implementation should re-configure GPIO for input _before_ setting R/W pin to `true`
+    /// and configure GPIO for output _after_ setting R/W to `false`.
     ///
     /// Note that LCD driver typically uses 5V, so input should be tolerant to 5V when using busy
     /// flag.
-    fn rw(&self, bit: bool);
+    ///
+    /// Default implementation will panic.
+    fn rw(&mut self, _bit: bool) {
+        unimplemented!()
+    }
 
     /// Read data from the data pins of the LCD (D0-D7 in 8-bit mode and D4-D7 in 4-bit mode)
-    fn read_data(&self) -> u8;
+    ///
+    /// Default implementation will panic.
+    fn read_data(&mut self) -> u8 {
+        unimplemented!()
+    }
 }
 
 /// Object implementing HD44780 protocol. Stateless (could be created as many times as needed).
-pub struct Display<'a, HW: 'a + Hardware + Delay> {
-    hw: &'a HW
+pub struct Display<HW: Hardware + Delay> {
+    hw: HW
 }
 
 trait WaitReady {
     fn wait_ready(&self, delay: u32);
 }
 
-impl<'a, HW: Hardware + Delay> core::fmt::Write for Display<'a, HW> {
+impl<HW: Hardware + Delay> core::fmt::Write for Display<HW> {
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
         self.print(s);
         Ok(())
@@ -219,7 +248,7 @@ impl<'a, HW: Hardware + Delay> core::fmt::Write for Display<'a, HW> {
 }
 
 #[cfg(feature = "fast-format")]
-impl<'a, HW: Hardware + Delay> fast_fmt::Write for Display<'a, HW> {
+impl<HW: Hardware + Delay> fast_fmt::Write for Display<HW> {
     type Error = ();
 
     fn write_char(&mut self, val: char) -> Result<(), Self::Error> {
@@ -230,8 +259,8 @@ impl<'a, HW: Hardware + Delay> fast_fmt::Write for Display<'a, HW> {
     fn size_hint(&mut self, _bytes: usize) {}
 }
 
-impl<'a, HW: Hardware + Delay> Display<'a, HW> {
-    pub fn new(hw: &'a HW) -> Display<'a, HW> {
+impl<HW: Hardware + Delay> Display<HW> {
+    pub fn new(hw: HW) -> Display<HW> {
         Display {
             hw
         }
@@ -243,15 +272,15 @@ impl<'a, HW: Hardware + Delay> Display<'a, HW> {
     /// # use lcd::*;
     /// # struct HW {}
     /// # impl Hardware for HW {
-    /// #   fn rs(&self, bit: bool) { }
-    /// #   fn enable(&self, bit: bool) { }
-    /// #   fn data(&self, data: u8) { }
+    /// #   fn rs(&mut self, bit: bool) { }
+    /// #   fn enable(&mut self, bit: bool) { }
+    /// #   fn data(&mut self, data: u8) { }
     /// # }
     /// # impl Delay for HW {
-    /// #   fn delay_us(&self, delay_usec: u32) { }
+    /// #   fn delay_us(&mut self, delay_usec: u32) { }
     /// # }
     /// # let hw = HW {};
-    /// # let mut lcd = Display::new(&hw);
+    /// # let mut lcd = Display::new(hw);
     /// lcd.display(DisplayMode::DisplayOff, DisplayCursor::CursorOff, DisplayBlink::BlinkOff);
     /// lcd.clear();
     /// lcd.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::NoShift);
@@ -400,17 +429,17 @@ impl<'a, HW: Hardware + Delay> Display<'a, HW> {
 
 
     // Typical command wait time is 37us
-    fn wait_ready_default(&self) {
+    fn wait_ready_default(&mut self) {
         self.wait_ready(50);
     }
 
-    fn pulse_enable(&self) {
+    fn pulse_enable(&mut self) {
         self.hw.enable(true);
         self.hw.delay_us(1); // minimum delay is 450 ns
         self.hw.enable(false);
     }
 
-    fn send(&self, data: u8) {
+    fn send(&mut self, data: u8) {
         match self.hw.mode() {
             FunctionMode::Bit8 => {
                 self.send_data(data);
@@ -422,20 +451,32 @@ impl<'a, HW: Hardware + Delay> Display<'a, HW> {
         }
     }
 
-    fn send_data(&self, data: u8) {
+    fn send_data(&mut self, data: u8) {
         self.hw.data(data);
         self.pulse_enable();
     }
-}
 
-impl<'a, HW: Hardware + Delay> WaitReady for Display<'a, HW> {
-    default fn wait_ready(&self, delay: u32) {
-        self.hw.delay_us(delay);
+    /// Function to wait until HD44780 is ready.
+    fn wait_ready(&mut self, delay: u32) {
+        if self.hw.can_read() {
+            self.hw.rs(false);
+
+            // Read mode
+            self.hw.rw(true);
+            self.hw.wait_address(); // tAS
+
+            while self.receive() & 0b1000_0000 != 0 { }
+            // tAH is 10ns, which is less than one cycle. So we don't have to wait.
+
+            // Back to write mode
+            self.hw.rw(false);
+        } else {
+            // Cannot read "ready" flag, so do a delay.
+            self.hw.delay_us(delay);
+        }
     }
-}
 
-impl<'a, HW: Hardware + Delay + InputCapableHardware> Display<'a, HW> {
-    fn receive_data(&self) -> u8 {
+    fn receive_data(&mut self) -> u8 {
         self.hw.enable(true);
         self.hw.delay_us(1);
         let data = self.hw.read_data();
@@ -444,7 +485,7 @@ impl<'a, HW: Hardware + Delay + InputCapableHardware> Display<'a, HW> {
         data
     }
 
-    fn receive(&self) -> u8 {
+    fn receive(&mut self) -> u8 {
         match self.hw.mode() {
             FunctionMode::Bit8 => {
                 self.receive_data()
@@ -454,20 +495,10 @@ impl<'a, HW: Hardware + Delay + InputCapableHardware> Display<'a, HW> {
             }
         }
     }
-}
 
-impl<'a, HW: Hardware + Delay + InputCapableHardware> WaitReady for Display<'a, HW> {
-    fn wait_ready(&self, _delay: u32) {
-        self.hw.rs(false);
 
-        // Read mode
-        self.hw.rw(true);
-        self.hw.wait_address(); // tAS
-
-        while self.receive() & 0b1000_0000 != 0 { }
-        // tAH is 10ns, which is less than one cycle. So we don't have to wait.
-
-        // Back to write mode
-        self.hw.rw(false);
+    /// Unwrap HAL back from the driver.
+    pub fn unwrap(self) -> HW {
+        self.hw
     }
 }
