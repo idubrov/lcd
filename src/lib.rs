@@ -1,7 +1,5 @@
 #![no_std]
-#![feature(const_fn)]
 #![deny(warnings)]
-#![feature(specialization)]
 
 //! Library that implements low-level protocol to the [Hitachi HD44780][1]-compatible LCD device.
 //!
@@ -20,9 +18,6 @@
 //! # Examples
 //! ```rust,no_run
 //! #![no_std]
-//! # #![feature(lang_items)]
-//! # //#[lang = "eh_personality"] fn eh_personality() {}
-//!
 //! use core::fmt::Write; // for write!
 //! use lcd::*;
 //!
