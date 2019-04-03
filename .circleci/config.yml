@@ -16,7 +16,6 @@ jobs:
       - run: cargo tarpaulin --out Xml
       - run: cargo +nightly build
       - run: cargo +nightly test
-      - run: cargo +nightly clippy
       - run:
           name: Uploading code coverage
           command: |
