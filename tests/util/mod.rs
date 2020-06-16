@@ -32,8 +32,7 @@ impl Hardware for BufferHardware {
     }
 
     fn mode(&self) -> FunctionMode {
-        let mode = self.mode;
-        mode
+        self.mode
     }
 
     fn can_read(&self) -> bool {
@@ -45,7 +44,7 @@ impl Hardware for BufferHardware {
     }
 
     fn read_data(&mut self) -> u8 {
-        self.command(format!("IS BUSY?"));
+        self.command("IS BUSY?".to_string());
         self.input.as_mut().unwrap().remove(0)
     }
 }

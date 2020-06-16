@@ -88,7 +88,7 @@ fn init_4bit() {
 fn write_4bit() {
     let input = vec![0, 0];
     let vec = util::test(FunctionMode::Bit4, Some(input), |lcd| {
-        lcd.write('a' as u8);
+        lcd.write(b'a');
     });
     assert_eq!(vec, vec![
         "R/S true",
@@ -107,7 +107,7 @@ fn write_4bit() {
 fn write_8bit() {
     let input = vec![0];
     let vec = util::test(FunctionMode::Bit8, Some(input), |lcd| {
-        lcd.write('a' as u8);
+        lcd.write(b'a');
     });
     assert_eq!(vec, vec![
         "R/S true",
@@ -124,7 +124,7 @@ fn write_8bit() {
 fn write_4bit_long_busy() {
     let input = vec![8, 0, 8, 0, 8, 0, 0, 0];
     let vec = util::test(FunctionMode::Bit4, Some(input), |lcd| {
-        lcd.write('a' as u8);
+        lcd.write(b'a');
     });
     assert_eq!(vec, vec![
         "R/S true",
@@ -149,7 +149,7 @@ fn write_4bit_long_busy() {
 fn write_8bit_long_busy() {
     let input = vec![128, 128, 128, 0];
     let vec = util::test(FunctionMode::Bit8, Some(input), |lcd| {
-        lcd.write('a' as u8);
+        lcd.write(b'a');
     });
     assert_eq!(vec, vec![
         "R/S true",

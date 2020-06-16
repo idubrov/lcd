@@ -1,4 +1,5 @@
 #![no_std]
+#![allow(clippy::needless_doctest_main)]
 #![deny(warnings)]
 
 //! Library that implements low-level protocol to the [Hitachi HD44780][1]-compatible LCD device.
@@ -92,9 +93,6 @@
 //!
 //! [1]: https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller
 
-
-#[cfg(feature = "fast-format")]
-extern crate fast_fmt;
 
 #[derive(Copy, Clone, Debug)]
 pub enum FunctionMode {
@@ -240,18 +238,6 @@ impl<HW: Hardware + Delay> core::fmt::Write for Display<HW> {
         self.print(s);
         Ok(())
     }
-}
-
-#[cfg(feature = "fast-format")]
-impl<HW: Hardware + Delay> fast_fmt::Write for Display<HW> {
-    type Error = ();
-
-    fn write_char(&mut self, val: char) -> Result<(), Self::Error> {
-        self.write(val as u8);
-        Ok(())
-    }
-
-    fn size_hint(&mut self, _bytes: usize) {}
 }
 
 impl<HW: Hardware + Delay> Display<HW> {
