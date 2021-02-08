@@ -222,6 +222,14 @@ pub trait Hardware {
     fn read_data(&mut self) -> u8 {
         unimplemented!()
     }
+    
+    /// Send data to the device.
+    ///
+    /// This is mainly for LCDs attached via I2C / SMBUS where it's important to make changes to
+    /// data and control lines at the same time.
+    ///
+    /// If control and data lines are directly attached, there's no need to implement this method.
+    fn apply(&mut self) {}
 }
 
 /// Object implementing HD44780 protocol. Stateless (could be created as many times as needed).
@@ -269,6 +277,7 @@ impl<HW: Hardware + Delay> Display<HW> {
     pub fn init(&mut self, line: FunctionLine, dots: FunctionDots) {
         let mode = self.hw.mode();
         self.hw.rs(false);
+        self.hw.apply();
         self.hw.wait_address();
         match mode {
             FunctionMode::Bit8 => {
@@ -378,6 +387,7 @@ impl<HW: Hardware + Delay> Display<HW> {
     /// Write given character (given as `data` of type `u8`) on the LCD screen.
     pub fn write(&mut self, data: u8) -> &Self {
         self.hw.rs(true);
+        self.hw.apply();
         self.hw.wait_address(); // tAS
         self.send(data);
         self.wait_ready_default();
@@ -402,6 +412,7 @@ impl<HW: Hardware + Delay> Display<HW> {
 
     fn command(&mut self, cmd: u8) -> &Self {
         self.hw.rs(false);
+        self.hw.apply();
         self.hw.wait_address(); // tAS
         self.send(cmd);
         self.wait_ready_default();
@@ -416,8 +427,10 @@ impl<HW: Hardware + Delay> Display<HW> {
 
     fn pulse_enable(&mut self) {
         self.hw.enable(true);
+        self.hw.apply();
         self.hw.delay_us(1); // minimum delay is 450 ns
         self.hw.enable(false);
+        self.hw.apply();
     }
 
     fn send(&mut self, data: u8) {
@@ -434,6 +447,7 @@ impl<HW: Hardware + Delay> Display<HW> {
 
     fn send_data(&mut self, data: u8) {
         self.hw.data(data);
+        self.hw.apply();
         self.pulse_enable();
     }
 
@@ -444,6 +458,7 @@ impl<HW: Hardware + Delay> Display<HW> {
 
             // Read mode
             self.hw.rw(true);
+            self.hw.apply();
             self.hw.wait_address(); // tAS
 
             while self.receive() & 0b1000_0000 != 0 { }
@@ -451,6 +466,7 @@ impl<HW: Hardware + Delay> Display<HW> {
 
             // Back to write mode
             self.hw.rw(false);
+            self.hw.apply();
         } else {
             // Cannot read "ready" flag, so do a delay.
             self.hw.delay_us(delay);
@@ -459,10 +475,12 @@ impl<HW: Hardware + Delay> Display<HW> {
 
     fn receive_data(&mut self) -> u8 {
         self.hw.enable(true);
+        self.hw.apply();
         self.hw.delay_us(1);
         let data = self.hw.read_data();
         self.hw.delay_us(1);
         self.hw.enable(false);
+        self.hw.apply();
         data
     }
 
