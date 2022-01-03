@@ -18,12 +18,8 @@
 //!
 //! # Examples
 //! ```rust,no_run
-//! #![no_std]
 //! use core::fmt::Write; // for write!
 //! use lcd::*;
-//!
-//! # #[panic_handler]
-//! # fn panic(_info: &core::panic::PanicInfo) -> ! { loop { } }
 //!
 //! // implement HAL...
 //! struct HW {
