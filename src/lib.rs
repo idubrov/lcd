@@ -198,7 +198,7 @@ pub trait Hardware {
     }
 
     /// If this implementation can read from the data port. Default is `false`. If `true` is
-    /// returned, both `set_read` and `read_data` need to be implemented.
+    /// returned, both `rw` and `read_data` need to be implemented.
     fn can_read(&self) -> bool {
         false
     }

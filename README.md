@@ -25,6 +25,7 @@ This library does not depend on `std` crate and could be used in bare metal embe
 use core::fmt::Write; // for write!
 use lcd::*;
 
+
 // implement HAL...
 struct HW {
     // any data needed to access low-level peripherals
@@ -32,13 +33,13 @@ struct HW {
 
 // implement `Hardware` trait to give access to LCD pins
 impl Hardware for HW {
-    fn rs(&self, bit: bool) {
+    fn rs(&mut self, bit: bool) {
         // should set R/S pin on LCD screen
     }
-    fn enable(&self, bit: bool) {
+    fn enable(&mut self, bit: bool) {
         // should set EN pin on LCD screen
     }
-    fn data(&self, data: u8) {
+    fn data(&mut self, data: u8) {
         // should set data bits to the LCD screen (only lowest 4 bits are used in 4-bit mode).
     }
 
@@ -46,29 +47,32 @@ impl Hardware for HW {
     fn mode(&self) -> lcd::FunctionMode {
         lcd::FunctionMode::Bit8
     }
-}
 
-// implement `Delay` trait to allow library to sleep for the given amount of time
-impl Delay for HW {
-    fn delay_us(&self, delay_usec: u32) {
-        // should sleep for the given amount of microseconds
+    // optionally, implement the following three functions to enable polling busy flag instead of delay
+    fn can_read(&self) -> bool {
+        true
     }
-}
 
-// optionally, implement `InputCapableHardware` to enable polling busy flag instead of delay
-impl InputCapableHardware for HW {
-    fn rw(&self, bit: bool) {
+    fn rw(&mut self, bit: bool) {
         // configure pins for input _before_ setting R/W to 1
         // configure pins for output _after_ setting R/W to 0
     }
-    fn read_data(&self) -> u8 {
+    fn read_data(&mut self) -> u8 {
         0 // read data from the port
     }
 }
 
+// implement `Delay` trait to allow library to sleep for the given amount of time
+impl Delay for HW {
+    fn delay_us(&mut self, delay_usec: u32) {
+        // should sleep for the given amount of microseconds
+    }
+}
+
+
 // create HAL and LCD instances
 let hw = HW { /* ... */ };
-let mut lcd = Display::new(&hw);
+let mut lcd = Display::new(hw);
 
 // initialization
 lcd.init(FunctionLine::Line2, FunctionDots::Dots5x8);
@@ -80,6 +84,7 @@ lcd.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::NoShift);
 
 // print something
 write!(&mut lcd, "Hello, my number today is {: >4}", 42).unwrap();
+
 ```
 
 See [`lcd-example-bluepill`](https://github.com/idubrov/lcd-example-bluepill) for the working example
