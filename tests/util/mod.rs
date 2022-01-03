@@ -55,7 +55,11 @@ impl Delay for BufferHardware {
     }
 }
 
-pub fn test(mode: FunctionMode, input: Option<Vec<u8>>, ops: impl Fn(&mut Display<BufferHardware>)) -> Vec<String> {
+pub fn test(
+    mode: FunctionMode,
+    input: Option<Vec<u8>>,
+    ops: impl Fn(&mut Display<BufferHardware>),
+) -> Vec<String> {
     let hw = BufferHardware {
         commands: vec![],
         input,

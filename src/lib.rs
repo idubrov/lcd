@@ -93,67 +93,66 @@
 //!
 //! [1]: https://en.wikipedia.org/wiki/Hitachi_HD44780_LCD_controller
 
-
 #[derive(Copy, Clone, Debug)]
 pub enum FunctionMode {
     /// Send data 4 bits at the time
     Bit4 = 0x00,
     /// Send data 8 bits at the time
-    Bit8 = 0x10
+    Bit8 = 0x10,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum FunctionDots {
     Dots5x8 = 0x00,
-    Dots5x10 = 0x04
+    Dots5x10 = 0x04,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum FunctionLine {
     Line1 = 0x00,
-    Line2 = 0x08
+    Line2 = 0x08,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum DisplayBlink {
     BlinkOff = 0x00,
-    BlinkOn = 0x01
+    BlinkOn = 0x01,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum DisplayCursor {
     CursorOff = 0x00,
-    CursorOn = 0x02
+    CursorOn = 0x02,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum DisplayMode {
     DisplayOff = 0x00,
-    DisplayOn = 0x04
+    DisplayOn = 0x04,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum Direction {
     Left = 0x00,
-    Right = 0x04
+    Right = 0x04,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum Scroll {
     CursorMove = 0x00,
-    DisplayMove = 0x08
+    DisplayMove = 0x08,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum EntryModeDirection {
     EntryLeft = 0x00,
-    EntryRight = 0x02
+    EntryRight = 0x02,
 }
 
 #[derive(Copy, Clone, Debug)]
 pub enum EntryModeShift {
     NoShift = 0x00,
-    Shift = 0x01
+    Shift = 0x01,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -165,7 +164,7 @@ pub enum Command {
     CursorShift = 0x10,
     FunctionSet = 0x20,
     SetCGRamAddr = 0x40,
-    SetDDRamAddr = 0x80
+    SetDDRamAddr = 0x80,
 }
 
 pub trait Delay {
@@ -222,7 +221,7 @@ pub trait Hardware {
     fn read_data(&mut self) -> u8 {
         unimplemented!()
     }
-    
+
     /// Send data to the device.
     ///
     /// This is mainly for LCDs attached via I2C / SMBUS where it's important to make changes to
@@ -234,7 +233,7 @@ pub trait Hardware {
 
 /// Object implementing HD44780 protocol. Stateless (could be created as many times as needed).
 pub struct Display<HW: Hardware + Delay> {
-    hw: HW
+    hw: HW,
 }
 
 trait WaitReady {
@@ -250,9 +249,7 @@ impl<HW: Hardware + Delay> core::fmt::Write for Display<HW> {
 
 impl<HW: Hardware + Delay> Display<HW> {
     pub fn new(hw: HW) -> Display<HW> {
-        Display {
-            hw
-        }
+        Display { hw }
     }
 
     /// Initialize LCD display. Sets an equivalent of the following setup:
@@ -285,10 +282,12 @@ impl<HW: Hardware + Delay> Display<HW> {
 
                 // Set to 8-bit mode, 2 line, 5x10 font
                 // Display off, clear, entry mode set
-                self.send_data((Command::FunctionSet as u8) |
-                    (FunctionMode::Bit8 as u8) |
-                    (FunctionLine::Line2 as u8) |
-                    (FunctionDots::Dots5x10 as u8)); // Send command for the first time
+                self.send_data(
+                    (Command::FunctionSet as u8)
+                        | (FunctionMode::Bit8 as u8)
+                        | (FunctionLine::Line2 as u8)
+                        | (FunctionDots::Dots5x10 as u8),
+                ); // Send command for the first time
 
                 self.hw.delay_us(4500); // Wait for more than 4.1ms
 
@@ -320,11 +319,14 @@ impl<HW: Hardware + Delay> Display<HW> {
 
         // Now display should be properly initialized, we can check BF now
         // Though if we are not checking BF, waiting time is longer
-        self.display(DisplayMode::DisplayOff, DisplayCursor::CursorOff, DisplayBlink::BlinkOff);
+        self.display(
+            DisplayMode::DisplayOff,
+            DisplayCursor::CursorOff,
+            DisplayBlink::BlinkOff,
+        );
         self.clear();
         self.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::NoShift);
     }
-
 
     /// Clears display and returns cursor to the home position (address 0).
     pub fn clear(&mut self) -> &Self {
@@ -351,8 +353,15 @@ impl<HW: Hardware + Delay> Display<HW> {
 
     /// Sets on/off of all display (`display`), cursor on/off (`cursor`), and blink of cursor
     /// position character (`blink`).
-    pub fn display(&mut self, display: DisplayMode, cursor: DisplayCursor, blink: DisplayBlink) -> &Self {
-        self.command((Command::DisplayControl as u8) | (display as u8) | (cursor as u8) | (blink as u8))
+    pub fn display(
+        &mut self,
+        display: DisplayMode,
+        cursor: DisplayCursor,
+        blink: DisplayBlink,
+    ) -> &Self {
+        self.command(
+            (Command::DisplayControl as u8) | (display as u8) | (cursor as u8) | (blink as u8),
+        )
     }
 
     /// Sets display-shift, direction (`dir`). DDRAM content remains unchanged.
@@ -371,7 +380,7 @@ impl<HW: Hardware + Delay> Display<HW> {
             1 => 0x40,
             2 => 0x14,
             3 => 0x54,
-            _ => 0
+            _ => 0,
         };
         self.command((Command::SetDDRamAddr as u8) | (col + offset));
     }
@@ -419,7 +428,6 @@ impl<HW: Hardware + Delay> Display<HW> {
         self
     }
 
-
     // Typical command wait time is 37us
     fn wait_ready_default(&mut self) {
         self.wait_ready(50);
@@ -461,7 +469,7 @@ impl<HW: Hardware + Delay> Display<HW> {
             self.hw.apply();
             self.hw.wait_address(); // tAS
 
-            while self.receive() & 0b1000_0000 != 0 { }
+            while self.receive() & 0b1000_0000 != 0 {}
             // tAH is 10ns, which is less than one cycle. So we don't have to wait.
 
             // Back to write mode
@@ -486,15 +494,10 @@ impl<HW: Hardware + Delay> Display<HW> {
 
     fn receive(&mut self) -> u8 {
         match self.hw.mode() {
-            FunctionMode::Bit8 => {
-                self.receive_data()
-            }
-            FunctionMode::Bit4 => {
-                (self.receive_data() << 4) | (self.receive_data() & 0xf)
-            }
+            FunctionMode::Bit8 => self.receive_data(),
+            FunctionMode::Bit4 => (self.receive_data() << 4) | (self.receive_data() & 0xf),
         }
     }
-
 
     /// Unwrap HAL back from the driver.
     pub fn unwrap(self) -> HW {
