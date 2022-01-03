@@ -21,10 +21,8 @@ This library does not depend on `std` crate and could be used in bare metal embe
 
 ## Examples
 ```rust
-#![no_std]
 use core::fmt::Write; // for write!
 use lcd::*;
-
 
 // implement HAL...
 struct HW {
