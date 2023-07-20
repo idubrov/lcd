@@ -215,6 +215,38 @@ fn write_4bit() {
 }
 
 #[test]
+fn write_4bit_delay() {
+    let input = vec![0, 0];
+    let vec = crate::util::test_ignored_delay(FunctionMode::Bit4, Some(input), |lcd| {
+        lcd.write(b'a');
+    });
+
+    // Delay statements will be removed because the implementation doesn't capture them.
+    assert_eq!(
+        vec,
+        vec![
+            "R/S true",
+            "DATA 0b0110",
+            "EN true",
+            "EN false",
+            "DATA 0b0001",
+            "EN true",
+            "EN false",
+            "R/S false",
+            "RW true",
+            "EN true",
+            "IS BUSY?",
+            "EN false",
+            "EN true",
+            "IS BUSY?",
+            "EN false",
+            "RW false"
+        ]
+    );
+}
+
+
+#[test]
 fn write_8bit() {
     let input = vec![0];
     let vec = util::test(FunctionMode::Bit8, Some(input), |lcd| {

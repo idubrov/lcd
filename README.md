@@ -8,8 +8,9 @@
 Library that implements low-level protocol to the [Hitachi HD44780][1]-compatible LCD device.
 
 Provides high-level API to the [Hitachi HD44780][1]-compatible LCD device. Uses 4-bit mode
-by default (only uses 4 data pins) plus two control pins (R/S and EN). R/W pin is not used
-and should be wired for "write" (low-level, 0).
+by default (only uses 4 data pins) plus two control pins (R/S and EN). Using the R/W pin is optional;
+when `Hardware::can_read()` returns `false` (the default implementation), it is not used and should be
+wired for "write" (low-level, 0).
 
 The implementation is completely stateless. Client is free to reuse the same `Display` object
 or to create one every time access to LCD is required.
@@ -29,7 +30,7 @@ struct HW {
     // any data needed to access low-level peripherals
 }
 
-// implement `Hardware` trait to give access to LCD pins
+// Implement the `Hardware` trait to give access to LCD pins
 impl Hardware for HW {
     fn rs(&mut self, bit: bool) {
         // should set R/S pin on LCD screen
@@ -60,10 +61,17 @@ impl Hardware for HW {
     }
 }
 
-// implement `Delay` trait to allow library to sleep for the given amount of time
+// Implement the `Delay` trait to allow library to sleep for the given amount of time
 impl Delay for HW {
     fn delay_us(&mut self, delay_usec: u32) {
         // should sleep for the given amount of microseconds
+    }
+}
+
+// If your hardware has a backlight, implement `Backlight` trait to control it
+impl Backlight for HW {
+    fn set_backlight(&mut self, enable: bool) {
+        // configure pins to turn the backlight on/off.
     }
 }
 
@@ -78,6 +86,7 @@ lcd.display(
     DisplayMode::DisplayOn,
     DisplayCursor::CursorOff,
     DisplayBlink::BlinkOff);
+lcd.backlight(true); // available only if HW implements Backlight.
 lcd.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::NoShift);
 
 // print something
