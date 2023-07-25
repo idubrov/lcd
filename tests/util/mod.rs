@@ -55,6 +55,18 @@ impl Delay for BufferHardware {
     }
 }
 
+pub struct IgnoredDelay;
+
+impl Delay for IgnoredDelay {
+    fn delay_us(&mut self, _delay: u32) {}
+}
+
+impl Backlight for BufferHardware {
+    fn set_backlight(&mut self, enable: bool) {
+        self.command(format!("BACKLIGHT {}", enable));
+    }
+}
+
 pub fn test(
     mode: FunctionMode,
     input: Option<Vec<u8>>,
@@ -68,4 +80,22 @@ pub fn test(
     let mut display = Display::new(hw);
     ops(&mut display);
     display.unwrap().commands
+}
+
+/// Tests against the HardwareDelay combiner, using an IgnoredDelay implementation.
+#[allow(dead_code)] // false warning
+pub fn test_ignored_delay(
+    mode: FunctionMode,
+    input: Option<Vec<u8>>,
+    ops: impl Fn(&mut Display<HardwareDelay<BufferHardware, IgnoredDelay>>),
+) -> Vec<String> {
+    let hw = BufferHardware {
+        commands: vec![],
+        input,
+        mode,
+    };
+    let delay = IgnoredDelay;
+    let mut display = Display::new(HardwareDelay::new(hw, delay));
+    ops(&mut display);
+    display.unwrap().unwrap().0.commands
 }

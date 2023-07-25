@@ -4,7 +4,7 @@ extern crate lcd;
 
 mod util;
 use lcd::{
-    Direction, EntryModeDirection, EntryModeShift, FunctionDots, FunctionLine, FunctionMode,
+    Backlight, Direction, EntryModeDirection, EntryModeShift, FunctionDots, FunctionLine, FunctionMode,
 };
 
 #[test]
@@ -604,6 +604,24 @@ fn upload() {
             "EN false",
             "DELAY 50",
             "DELAY 5",
+        ]
+    );
+}
+
+#[test]
+fn backlight() {
+    let vec = util::test(FunctionMode::Bit4, None, |lcd| {
+        lcd.set_backlight(true);
+        lcd.set_backlight(false);
+        lcd.set_backlight(true);
+        
+    });
+    assert_eq!(
+        vec,
+        vec![
+            "BACKLIGHT true",
+            "BACKLIGHT false",
+            "BACKLIGHT true",
         ]
     );
 }

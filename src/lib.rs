@@ -4,15 +4,19 @@
 
 //! Library that implements low-level protocol to the [Hitachi HD44780][1]-compatible LCD device.
 //!
-//! Provides high-level API to the [Hitachi HD44780][1]-compatible LCD device. Uses 4-bit mode
-//! by default (only uses 4 data pins) plus two control pins (R/S and EN). R/W pin is not used
-//! and should be wired for "write" (low-level, 0).
+//! Provides high-level API to the [Hitachi HD44780][1]-compatible LCD device. This uses 4-bit mode
+//! by default (only uses 4 data pins) plus two control pins (R/S and EN). Using the R/W pin is optional;
+//! when `Hardware::can_read()` returns `false` (the default implementation), it is not used and should be
+//! wired for "write" (low-level, 0).
 //!
-//! The implementation is completely stateless. Client is free to reuse the same `Display` object
+//! The implementation is completely stateless. Clients are free to reuse the same `Display` object
 //! or to create one every time access to LCD is required.
 //!
-//! `Display` also implements `core::fmt::Write` trait, so it could be used as a target of `write!`
+//! `Display` also implements the `core::fmt::Write` trait, so it could be used as a target of `write!`
 //! macro.
+//! 
+//! If you have separate [Hardware] and [Delay] implementations, they can be combined using the
+//! [HardwareDelay] struct.
 //!
 //! This library does not depend on `std` crate and could be used in bare metal embedded development.
 //!
@@ -26,7 +30,7 @@
 //!     // any data needed to access low-level peripherals
 //! }
 //!
-//! // implement `Hardware` trait to give access to LCD pins
+//! // Implement the `Hardware` trait to give access to LCD pins
 //! impl Hardware for HW {
 //!     fn rs(&mut self, bit: bool) {
 //!         // should set R/S pin on LCD screen
@@ -57,10 +61,17 @@
 //!     }
 //! }
 //!
-//! // implement `Delay` trait to allow library to sleep for the given amount of time
+//! // Implement the `Delay` trait to allow library to sleep for the given amount of time
 //! impl Delay for HW {
 //!     fn delay_us(&mut self, delay_usec: u32) {
 //!         // should sleep for the given amount of microseconds
+//!     }
+//! }
+//! 
+//! // If your hardware has a backlight, implement the `Backlight` trait to control it
+//! impl Backlight for HW {
+//!     fn set_backlight(&mut self, enable: bool) {
+//!         // configure pins to turn the backlight on/off.
 //!     }
 //! }
 //!
@@ -76,6 +87,7 @@
 //!     DisplayMode::DisplayOn,
 //!     DisplayCursor::CursorOff,
 //!     DisplayBlink::BlinkOff);
+//! lcd.set_backlight(true); // available only if HW implements Backlight.
 //! lcd.entry_mode(EntryModeDirection::EntryRight, EntryModeShift::NoShift);
 //!
 //! // print something
@@ -227,7 +239,13 @@ pub trait Hardware {
     fn apply(&mut self) {}
 }
 
-/// Object implementing HD44780 protocol. Stateless (could be created as many times as needed).
+/// Trait for hardware that implements backlight controls.
+pub trait Backlight {
+    /// Turn backlight on or off.
+    fn set_backlight(&mut self, enabled: bool);
+}
+
+/// Object implementing HD44780 protocol. This is stateless (could be created as many times as needed).
 pub struct Display<HW: Hardware + Delay> {
     hw: HW,
 }
@@ -243,7 +261,15 @@ impl<HW: Hardware + Delay> core::fmt::Write for Display<HW> {
     }
 }
 
+impl<HW: Hardware + Delay + Backlight> Backlight for Display<HW> {
+    #[inline(always)]
+    fn set_backlight(&mut self, enabled: bool) {
+        self.hw.set_backlight(enabled);
+    }
+}
+
 impl<HW: Hardware + Delay> Display<HW> {
+    /// Create a new Display object from the given `Hardware + Delay` implementation.
     pub fn new(hw: HW) -> Display<HW> {
         Display { hw }
     }
@@ -507,5 +533,105 @@ impl<HW: Hardware + Delay> Display<HW> {
     /// Unwrap HAL back from the driver.
     pub fn unwrap(self) -> HW {
         self.hw
+    }
+}
+
+/// A combination `Hardware + Delay` implementation from individual [Hardware] and [Delay] implementations.
+pub struct HardwareDelay<H, D> {
+    hardware: H,
+    delay: D,
+}
+
+impl<H, D> HardwareDelay<H, D> {
+    /// Create a new [HardwareDelay] struct from individual [Hardware] and [Delay] implementations.
+    pub fn new(hardware: H, delay: D) -> Self {
+        Self { hardware, delay }
+    }
+
+    /// Unwrap back to individual [Hardware] and [Delay] implementations.
+    pub fn unwrap(self) -> (H, D) {
+        (self.hardware, self.delay)
+    }
+}
+
+impl<H, D> Hardware for HardwareDelay<H, D>
+where
+    H: Hardware,
+{
+    #[inline(always)]
+    fn rs(&mut self, bit: bool) {
+        self.hardware.rs(bit)
+    }
+    #[inline(always)]
+    fn enable(&mut self, bit: bool) {
+        self.hardware.enable(bit)
+    }
+    #[inline(always)]
+    fn data(&mut self, data: u8) {
+        self.hardware.data(data)
+    }
+    #[inline(always)]
+    fn wait_address(&mut self) {
+        self.hardware.wait_address()
+    }
+
+    #[inline(always)]
+    fn mode(&self) -> FunctionMode {
+        self.hardware.mode()
+    }
+
+    #[inline(always)]
+    fn can_read(&self) -> bool {
+        self.hardware.can_read()
+    }
+
+    #[inline(always)]
+    fn rw(&mut self, bit: bool) {
+        self.hardware.rw(bit)
+    }
+
+    #[inline(always)]
+    fn read_data(&mut self) -> u8 {
+        self.hardware.read_data()
+    }
+
+    #[inline(always)]
+    fn apply(&mut self) {
+        self.hardware.apply()
+    }
+}
+
+impl<H, D> Delay for HardwareDelay<H, D>
+where
+    D: Delay,
+{
+    #[inline(always)]
+    fn delay_us(&mut self, delay_usec: u32) {
+        self.delay.delay_us(delay_usec)
+    }
+}
+
+impl<H, D> core::fmt::Debug for HardwareDelay<H, D>
+where
+    H: core::fmt::Debug,
+    D: core::fmt::Debug,
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("HardwareDelay")
+            .field("hardware", &self.hardware)
+            .field("delay", &self.delay)
+            .finish()
+    }
+}
+
+impl<H, D> Clone for HardwareDelay<H, D>
+where H: Clone,
+D: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            hardware: self.hardware.clone(),
+            delay: self.delay.clone(),
+        }
     }
 }
